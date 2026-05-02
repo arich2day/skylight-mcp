@@ -1,15 +1,21 @@
 import { z } from "zod";
 
 // Config schema supports two auth methods:
-// 1. Email/password (preferred) - will login and get token automatically
-// 2. Token-based (legacy) - for manual token capture
+// 1. OAuth refresh — access_token + refresh_token + device_fingerprint (preferred,
+//    refreshes automatically when the access token expires)
+// 2. Manual bearer token — single SKYLIGHT_TOKEN (fallback; no refresh, expires
+//    when the captured token expires).
+//
+// Email/password auth (SKYLIGHT_EMAIL / SKYLIGHT_PASSWORD) is no longer supported
+// because Skylight removed the POST /api/sessions endpoint.
 const ConfigSchema = z
   .object({
-    // Email/password auth (preferred)
-    email: z.string().email().optional(),
-    password: z.string().min(1).optional(),
+    // OAuth refresh-token mode
+    accessToken: z.string().min(1).optional(),
+    refreshToken: z.string().min(1).optional(),
+    deviceFingerprint: z.string().min(1).optional(),
 
-    // Token-based auth (legacy)
+    // Manual bearer-token fallback
     token: z.string().min(1).optional(),
     authType: z.enum(["bearer", "basic"]).default("bearer"),
 
@@ -21,29 +27,32 @@ const ConfigSchema = z
   })
   .refine(
     (data) => {
-      // Must have either email+password OR token
-      const hasEmailAuth = data.email && data.password;
-      const hasTokenAuth = !!data.token;
-      return hasEmailAuth || hasTokenAuth;
+      const hasOAuth = !!(data.accessToken && data.refreshToken && data.deviceFingerprint);
+      const hasManualToken = !!data.token;
+      return hasOAuth || hasManualToken;
     },
     {
-      message: "Either SKYLIGHT_EMAIL and SKYLIGHT_PASSWORD, or SKYLIGHT_TOKEN must be provided",
+      message:
+        "Provide either (SKYLIGHT_ACCESS_TOKEN + SKYLIGHT_REFRESH_TOKEN + SKYLIGHT_DEVICE_FINGERPRINT) " +
+        "or SKYLIGHT_TOKEN. Email/password auth is no longer supported by the Skylight API.",
     }
   );
 
 export type Config = z.infer<typeof ConfigSchema>;
 
-export interface ResolvedConfig {
-  token: string;
-  frameId: string;
-  timezone: string;
-  authType: "bearer" | "basic";
-}
-
 export function loadConfig(): Config {
+  if (process.env.SKYLIGHT_EMAIL || process.env.SKYLIGHT_PASSWORD) {
+    console.error(
+      "[config] SKYLIGHT_EMAIL / SKYLIGHT_PASSWORD are set but no longer supported. " +
+        "Skylight migrated to OAuth 2.0; the old /api/sessions endpoint returns 401. " +
+        "Capture access_token / refresh_token / device_fingerprint from the Skylight web app and use those instead."
+    );
+  }
+
   const result = ConfigSchema.safeParse({
-    email: process.env.SKYLIGHT_EMAIL,
-    password: process.env.SKYLIGHT_PASSWORD,
+    accessToken: process.env.SKYLIGHT_ACCESS_TOKEN,
+    refreshToken: process.env.SKYLIGHT_REFRESH_TOKEN,
+    deviceFingerprint: process.env.SKYLIGHT_DEVICE_FINGERPRINT,
     token: process.env.SKYLIGHT_TOKEN,
     frameId: process.env.SKYLIGHT_FRAME_ID,
     authType: process.env.SKYLIGHT_AUTH_TYPE || "bearer",
@@ -59,12 +68,13 @@ Missing or invalid configuration:
 ${errors}
 
 Authentication (choose one):
-  Option 1 - Email/Password (recommended):
-    SKYLIGHT_EMAIL    - Your Skylight account email
-    SKYLIGHT_PASSWORD - Your Skylight account password
+  Option 1 - OAuth refresh-token mode (recommended):
+    SKYLIGHT_ACCESS_TOKEN       - Captured from the Skylight web app
+    SKYLIGHT_REFRESH_TOKEN      - Captured from the Skylight web app
+    SKYLIGHT_DEVICE_FINGERPRINT - Captured from the Skylight web app
 
-  Option 2 - Manual Token:
-    SKYLIGHT_TOKEN    - Your Skylight API token
+  Option 2 - Manual bearer token (no automatic refresh):
+    SKYLIGHT_TOKEN     - Captured access token
     SKYLIGHT_AUTH_TYPE - 'bearer' or 'basic' (default: bearer)
 
 Required:
@@ -73,10 +83,8 @@ Required:
 Optional:
   SKYLIGHT_TIMEZONE - Timezone for dates (default: America/New_York)
 
-To find your frame ID:
-1. Log in to the Skylight app
-2. Use a proxy tool to capture API traffic
-3. Look for the frame ID in URLs like /api/frames/{frameId}/chores
+Email/password auth (SKYLIGHT_EMAIL / SKYLIGHT_PASSWORD) is no longer supported.
+The Skylight API migrated to OAuth 2.0; the old /api/sessions endpoint returns 401.
 `);
     process.exit(1);
   }
@@ -94,8 +102,9 @@ export function getConfig(): Config {
 }
 
 /**
- * Check if config uses email/password auth
+ * Check whether config uses OAuth refresh-token mode.
+ * False means we're in manual-token fallback mode (no refresh available).
  */
-export function usesEmailAuth(config: Config): boolean {
-  return !!(config.email && config.password);
+export function usesOAuthRefresh(config: Config): boolean {
+  return !!(config.accessToken && config.refreshToken && config.deviceFingerprint);
 }
