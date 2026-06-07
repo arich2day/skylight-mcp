@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "skylight": {
+      "command": "bash",
+      "args": [
+        "-lc",
+        "[ -d node_modules ] || npm ci; [ -f dist/index.js ] || npm run build; exec node dist/index.js"
+      ],
+      "env": {
+        "SKYLIGHT_EMAIL": "${SKYLIGHT_EMAIL}",
+        "SKYLIGHT_PASSWORD": "${SKYLIGHT_PASSWORD}",
+        "SKYLIGHT_FRAME_ID": "${SKYLIGHT_FRAME_ID}",
+        "SKYLIGHT_TIMEZONE": "${SKYLIGHT_TIMEZONE:-America/New_York}"
+      }
+    }
+  }
+}
