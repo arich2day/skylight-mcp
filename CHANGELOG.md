@@ -19,6 +19,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `BYDAY` list.
 - **Chore deletion**: Recurring chores now send the required `apply_to` value
   (`all` / `this` / `this_and_future`), and empty delete responses no longer throw.
+- **Lists & task box**: `create_list`, `update_list`, `create_list_item`,
+  `update_list_item`, and `create_task` now send flat JSON bodies (they previously
+  sent JSON:API envelopes the API rejected). List creation now defaults to a valid
+  palette color, since the API requires one.
+- **Auth errors**: A version-gated login (`/api/sessions`) now reports the real
+  server message and points to token auth, instead of a misleading
+  "invalid email or password".
 
 ### Added
 

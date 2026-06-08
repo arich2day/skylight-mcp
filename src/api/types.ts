@@ -211,58 +211,35 @@ export interface ChoreWriteBody {
 
 export type CreateChoreRequest = ChoreWriteBody;
 
-export interface CreateTaskBoxItemRequest {
-  data: {
-    type: "task_box_item";
-    attributes: Partial<TaskBoxItemAttributes>;
-  };
-}
+// Like chores/rewards, task box and list writes use a flat JSON body, not a
+// JSON:API envelope.
+export type CreateTaskBoxItemRequest = Partial<TaskBoxItemAttributes>;
 
-// List request types
+// List request types (flat body). `color` is required by the API on create.
 export interface CreateListRequest {
-  data: {
-    type: "list";
-    attributes: {
-      label: string;
-      kind: "shopping" | "to_do";
-      color?: string | null;
-    };
-  };
+  label: string;
+  kind: "shopping" | "to_do";
+  color: string;
 }
 
-export interface UpdateListRequest {
-  data: {
-    type: "list";
-    attributes: Partial<{
-      label: string;
-      kind: "shopping" | "to_do";
-      color: string | null;
-    }>;
-  };
-}
+export type UpdateListRequest = Partial<{
+  label: string;
+  kind: "shopping" | "to_do";
+  color: string | null;
+}>;
 
-// List item request types
+// List item request types (flat body)
 export interface CreateListItemRequest {
-  data: {
-    type: "list_item";
-    attributes: {
-      label: string;
-      section?: string | null;
-    };
-  };
+  label: string;
+  section?: string | null;
 }
 
-export interface UpdateListItemRequest {
-  data: {
-    type: "list_item";
-    attributes: Partial<{
-      label: string;
-      status: "pending" | "completed";
-      section: string | null;
-      position: number | null;
-    }>;
-  };
-}
+export type UpdateListItemRequest = Partial<{
+  label: string;
+  status: "pending" | "completed";
+  section: string | null;
+  position: number | null;
+}>;
 
 export type ListItemResponse = JsonApiResponse<ListItemResource>;
 
