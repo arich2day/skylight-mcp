@@ -16,7 +16,7 @@
  * in the app menus.
  */
 import { readFileSync } from "node:fs";
-import { createRecipe, getMealCategories } from "../src/api/endpoints/meals.js";
+import { createRecipe, getMealCategories, getRecipes } from "../src/api/endpoints/meals.js";
 
 export interface RecipeInput {
   name: string;
@@ -171,13 +171,27 @@ async function main(): Promise<void> {
   console.log(`Loaded ${recipes.length} recipe(s) from ${file}${dry ? "  (dry run — nothing will be created)" : ""}\n`);
 
   let categories: { id: string; name: string }[] = [];
+  // Names of recipes already on the account — so re-running is idempotent and a
+  // run interrupted by an expired token resumes cleanly with a fresh one.
+  const existing = new Set<string>();
   if (!dry) {
     categories = (await getMealCategories()).map((c) => {
       const attrs = c.attributes as Record<string, unknown>;
       return { id: c.id, name: String(attrs.label ?? attrs.name ?? "") };
     });
     console.log("Available meal categories:", categories.map((c) => c.name).join(", ") || "(none)", "\n");
+
+    for (const rec of await getRecipes()) {
+      const summary = (rec.attributes as Record<string, unknown>).summary;
+      if (summary) existing.add(String(summary).trim().toLowerCase());
+    }
+    console.log(`${existing.size} recipe(s) already on the account will be skipped.\n`);
   }
+
+  const isAuthError = (e: unknown): boolean => {
+    const m = e instanceof Error ? `${e.name} ${e.message}` : String(e);
+    return /401|auth|invalid token|unauthorized/i.test(m);
+  };
 
   // Map sheet categories that don't exist in Skylight onto its four built-in
   // categories (Breakfast / Lunch / Dinner / Snack). New categories can't be
@@ -201,9 +215,12 @@ async function main(): Promise<void> {
   };
 
   let created = 0;
+  let skipped = 0;
+  let aborted = false;
   const failures: string[] = [];
 
-  for (const r of recipes) {
+  for (let i = 0; i < recipes.length; i++) {
+    const r = recipes[i];
     const description = buildDescription(r);
 
     if (dry) {
@@ -212,35 +229,50 @@ async function main(): Promise<void> {
       continue;
     }
 
+    const key = r.name.trim().toLowerCase();
+    if (existing.has(key)) { skipped++; continue; }
+
     const categoryId = resolveCategory(r.category);
     if (r.category && !categoryId) {
       console.warn(`  ! category "${r.category}" not found for "${r.name}" — creating it uncategorized`);
     }
 
-    // Create with one retry, to ride out a transient rate-limit/5xx on big runs.
+    // Create with one retry to ride out a transient rate-limit/5xx on big runs.
     let lastErr: unknown = null;
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
         const recipe = await createRecipe({ summary: r.name, description, mealCategoryId: categoryId });
-        console.log(`✓ ${r.name} (id ${recipe.id})`);
+        existing.add(key);
         created++;
+        if (created % 25 === 0) console.log(`  …${created} created (at "${r.name}")`);
         lastErr = null;
         break;
       } catch (e) {
         lastErr = e;
+        if (isAuthError(e)) break; // token dead — don't grind through the rest
         if (attempt === 0) await sleep(2000);
       }
     }
-    if (lastErr) failures.push(`${r.name}: ${lastErr instanceof Error ? lastErr.message : String(lastErr)}`);
+
+    if (lastErr) {
+      if (isAuthError(lastErr)) {
+        aborted = true;
+        console.error(`\n⛔ Auth failed at recipe ${i + 1}/${recipes.length} ("${r.name}"). Token likely expired.`);
+        console.error("   Re-run with a fresh SKYLIGHT_TOKEN — already-created recipes will be skipped.");
+        break;
+      }
+      failures.push(`${r.name}: ${lastErr instanceof Error ? lastErr.message : String(lastErr)}`);
+    }
 
     await sleep(delayMs);
   }
 
   if (!dry) {
-    console.log(`\nCreated ${created}/${recipes.length} recipe(s).`);
+    console.log(`\nCreated ${created}, skipped ${skipped} (already existed)${aborted ? ", ABORTED early" : ""}.`);
     if (failures.length) {
-      console.log("Failures:");
-      failures.forEach((f) => console.log("  ✗ " + f));
+      console.log(`Failures (${failures.length}):`);
+      failures.slice(0, 20).forEach((f) => console.log("  ✗ " + f));
+      if (failures.length > 20) console.log(`  …and ${failures.length - 20} more`);
       process.exitCode = 1;
     }
   }
