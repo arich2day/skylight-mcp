@@ -161,8 +161,12 @@ async function main(): Promise<void> {
   const args = process.argv.slice(2);
   const dry = args.includes("--dry");
   const file = args.find((a) => !a.startsWith("--")) ?? "scripts/recipes.json";
+  const limit = Number(args.find((a) => a.startsWith("--limit="))?.split("=")[1] ?? 0);
+  const delayMs = Number(args.find((a) => a.startsWith("--delay="))?.split("=")[1] ?? 120);
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
   const raw = readFileSync(file, "utf8");
-  const recipes = file.toLowerCase().endsWith(".csv") ? csvToRecipes(raw) : (JSON.parse(raw) as RecipeInput[]);
+  let recipes = file.toLowerCase().endsWith(".csv") ? csvToRecipes(raw) : (JSON.parse(raw) as RecipeInput[]);
+  if (limit > 0) recipes = recipes.slice(0, limit);
 
   console.log(`Loaded ${recipes.length} recipe(s) from ${file}${dry ? "  (dry run — nothing will be created)" : ""}\n`);
 
@@ -175,12 +179,24 @@ async function main(): Promise<void> {
     console.log("Available meal categories:", categories.map((c) => c.name).join(", ") || "(none)", "\n");
   }
 
+  // Map sheet categories that don't exist in Skylight onto its four built-in
+  // categories (Breakfast / Lunch / Dinner / Snack). New categories can't be
+  // created via the API. Override with SKYLIGHT_CATEGORY_ALIASES if needed.
+  const CATEGORY_ALIASES: Record<string, string> = {
+    "lunch prep": "Lunch",
+    smoothie: "Breakfast",
+    "kids meal": "Snack",
+    "kids meals": "Snack",
+  };
+
   const resolveCategory = (name?: string): string | undefined => {
     if (!name) return undefined;
-    const lower = name.toLowerCase();
+    let lower = name.trim().toLowerCase();
+    if (CATEGORY_ALIASES[lower]) lower = CATEGORY_ALIASES[lower].toLowerCase();
     const match =
       categories.find((c) => c.name.toLowerCase() === lower) ??
-      categories.find((c) => c.name.toLowerCase().includes(lower));
+      categories.find((c) => c.name.toLowerCase().includes(lower)) ??
+      categories.find((c) => lower.includes(c.name.toLowerCase()));
     return match?.id;
   };
 
@@ -201,13 +217,23 @@ async function main(): Promise<void> {
       console.warn(`  ! category "${r.category}" not found for "${r.name}" — creating it uncategorized`);
     }
 
-    try {
-      const recipe = await createRecipe({ summary: r.name, description, mealCategoryId: categoryId });
-      console.log(`✓ ${r.name} (id ${recipe.id})`);
-      created++;
-    } catch (e) {
-      failures.push(`${r.name}: ${e instanceof Error ? e.message : String(e)}`);
+    // Create with one retry, to ride out a transient rate-limit/5xx on big runs.
+    let lastErr: unknown = null;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const recipe = await createRecipe({ summary: r.name, description, mealCategoryId: categoryId });
+        console.log(`✓ ${r.name} (id ${recipe.id})`);
+        created++;
+        lastErr = null;
+        break;
+      } catch (e) {
+        lastErr = e;
+        if (attempt === 0) await sleep(2000);
+      }
     }
+    if (lastErr) failures.push(`${r.name}: ${lastErr instanceof Error ? lastErr.message : String(lastErr)}`);
+
+    await sleep(delayMs);
   }
 
   if (!dry) {

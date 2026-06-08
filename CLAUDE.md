@@ -140,3 +140,8 @@ CSV headers are matched loosely (case/spacing/punctuation ignored): Recipe Name,
 Category, Target Protein, Style / Flavor Profile, Key Ingredients, Price / Serv.,
 Target Appliance, Step-by-Step Directions, Suggested Appetizer / Side, Picky
 Eater Option (plus Servings/Prep/Cook/Notes/Source). See `docs/recipe-import.md`.
+
+Skylight has only four meal categories (Breakfast/Lunch/Dinner/Snack) and new
+ones can't be created via the API (`POST /meals/categories` → 404). The importer
+maps non-native categories: `Lunch Prep → Lunch`, `Smoothie → Breakfast`,
+`Kids Meal → Snack` (see `CATEGORY_ALIASES` in the script).
