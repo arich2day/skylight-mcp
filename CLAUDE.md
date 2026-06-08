@@ -39,14 +39,15 @@ npm run generate:types # Generate TypeScript types from OpenAPI spec
 
 ## Authentication
 
-Two methods supported (validated via Zod refinement in `config.ts`):
+Three methods supported (validated via Zod refinement in `config.ts`):
 
-1. **Email/Password** (recommended): Set `SKYLIGHT_EMAIL` and `SKYLIGHT_PASSWORD`. Server auto-logs in via POST /api/sessions and uses `Basic base64(userId:token)` format for subsequent requests.
-2. **Manual Token**: Set `SKYLIGHT_TOKEN` and optionally `SKYLIGHT_AUTH_TYPE` (bearer/basic).
+1. **OAuth refresh token** (recommended, self-renewing): Set `SKYLIGHT_REFRESH_TOKEN`. The client mints/renews short-lived Bearer access tokens via `POST /oauth/token` (`grant_type=refresh_token`, `client_id=skylight-mobile`). See `api/oauth.ts`. Optional `SKYLIGHT_OAUTH_CLIENT_ID` and `SKYLIGHT_TOKEN_CACHE` (persists a rotated refresh token across restarts).
+2. **Manual Token**: Set `SKYLIGHT_TOKEN` (a captured Bearer access token) and optionally `SKYLIGHT_AUTH_TYPE` (bearer/basic). Short-lived; expires in ~an hour.
+3. **Email/Password**: Set `SKYLIGHT_EMAIL` and `SKYLIGHT_PASSWORD`. *Currently blocked* — `/api/sessions` is version-gated and returns "no longer supported".
 
-Both require `SKYLIGHT_FRAME_ID` (household identifier from API URLs like `/api/frames/{frameId}/chores`).
+All require `SKYLIGHT_FRAME_ID` (household identifier from API URLs like `/api/frames/{frameId}/chores`).
 
-**Note**: The Skylight API uses Basic auth with the format `Basic base64(userId:token)`, not Bearer tokens.
+**Auth flow**: Skylight is OAuth2 (`/oauth/authorize` + `/oauth/token`). Access tokens are plain Bearer tokens. The legacy email/password path used `Basic base64(userId:token)`. See `docs/getting-a-token.md`.
 
 ## Plus Subscription
 

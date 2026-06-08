@@ -1,5 +1,8 @@
-import { getConfig, usesEmailAuth, type Config } from "../config.js";
+import { readFileSync, writeFileSync } from "node:fs";
+
+import { getConfig, usesEmailAuth, usesRefreshAuth, type Config } from "../config.js";
 import { login } from "./auth.js";
+import { refreshAccessToken } from "./oauth.js";
 import {
   AuthenticationError,
   NotFoundError,
@@ -28,6 +31,9 @@ export class SkylightClient {
   private config: Config;
   private resolvedToken: string | null = null;
   private resolvedUserId: string | null = null;
+  private resolvedTokenExpiresAt = 0; // epoch ms; for refresh-token auth
+  private currentRefreshToken: string | null = null;
+  private refreshPromise: Promise<string> | null = null;
   private loginPromise: Promise<{ token: string; userId: string }> | null = null;
   private subscriptionStatus: SubscriptionStatus = null;
 
@@ -36,10 +42,17 @@ export class SkylightClient {
   }
 
   /**
-   * Get the authentication credentials
-   * If using email/password auth, will login first
+   * Get the authentication credentials.
+   * - Refresh-token auth: mint/renew a short-lived access token via OAuth.
+   * - Email/password auth: log in.
+   * - Manual token auth: use the configured token as-is.
    */
   private async getCredentials(): Promise<{ token: string; userId: string | null }> {
+    // OAuth refresh-token auth (self-renewing)
+    if (usesRefreshAuth(this.config)) {
+      return { token: await this.getRefreshAuthToken(), userId: null };
+    }
+
     // If we already have a resolved token, use it
     if (this.resolvedToken) {
       return { token: this.resolvedToken, userId: this.resolvedUserId };
@@ -65,6 +78,57 @@ export class SkylightClient {
       return result;
     } finally {
       this.loginPromise = null;
+    }
+  }
+
+  /**
+   * Return a valid OAuth access token, refreshing it if expired/missing.
+   * Concurrent callers share a single in-flight refresh.
+   */
+  private async getRefreshAuthToken(): Promise<string> {
+    if (this.resolvedToken && Date.now() < this.resolvedTokenExpiresAt) {
+      return this.resolvedToken;
+    }
+    if (!this.refreshPromise) {
+      this.refreshPromise = this.performRefresh().finally(() => {
+        this.refreshPromise = null;
+      });
+    }
+    return this.refreshPromise;
+  }
+
+  private async performRefresh(): Promise<string> {
+    const refreshToken =
+      this.currentRefreshToken ?? this.loadCachedRefreshToken() ?? this.config.refreshToken!;
+    console.error("Refreshing Skylight access token...");
+    const result = await refreshAccessToken(refreshToken, this.config.oauthClientId);
+    this.resolvedToken = result.accessToken;
+    // Renew a minute early to avoid using a token that expires mid-request.
+    this.resolvedTokenExpiresAt = Date.now() + result.expiresIn * 1000 - 60_000;
+    this.currentRefreshToken = result.refreshToken;
+    this.saveCachedRefreshToken(result.refreshToken);
+    return result.accessToken;
+  }
+
+  /** Load a (possibly rotated) refresh token from the optional on-disk cache. */
+  private loadCachedRefreshToken(): string | null {
+    const path = this.config.tokenCachePath;
+    if (!path) return null;
+    try {
+      return (JSON.parse(readFileSync(path, "utf8")).refresh_token as string) ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Persist a rotated refresh token so it survives restarts (if a cache path is set). */
+  private saveCachedRefreshToken(refreshToken: string): void {
+    const path = this.config.tokenCachePath;
+    if (!path) return;
+    try {
+      writeFileSync(path, JSON.stringify({ refresh_token: refreshToken }), { mode: 0o600 });
+    } catch (e) {
+      console.error(`[client] could not write token cache: ${e instanceof Error ? e.message : e}`);
     }
   }
 
@@ -196,11 +260,16 @@ export class SkylightClient {
     console.error(`[client] Response: ${response.status}`);
 
     if (!response.ok) {
-      // For email/password auth, try re-login once on 401
-      if (response.status === 401 && usesEmailAuth(this.config) && !isRetry) {
-        console.error("[client] Got 401, attempting re-login...");
+      // For email/password or refresh-token auth, re-authenticate once on 401.
+      if (
+        response.status === 401 &&
+        (usesEmailAuth(this.config) || usesRefreshAuth(this.config)) &&
+        !isRetry
+      ) {
+        console.error("[client] Got 401, re-authenticating...");
         this.resolvedToken = null;
         this.resolvedUserId = null;
+        this.resolvedTokenExpiresAt = 0;
         return this.request<T>(endpoint, options, true);
       }
       await this.handleResponseError(response, url);

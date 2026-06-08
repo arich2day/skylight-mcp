@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Self-renewing OAuth auth**: Set `SKYLIGHT_REFRESH_TOKEN` and the server mints
+  and auto-renews its own short-lived access tokens via `POST /oauth/token`
+  (`grant_type=refresh_token`, `client_id=skylight-mobile`) — no more manually
+  re-capturing expiring Bearer tokens. Renews a minute before expiry, retries
+  once on a 401, handles refresh-token rotation, and can persist a rotated token
+  across restarts via `SKYLIGHT_TOKEN_CACHE`. See `docs/getting-a-token.md`.
+
 ### Fixed
 
 - **Chores & rewards create/update**: The Skylight API expects a flat JSON body

@@ -86,30 +86,41 @@ Copy this into your AI's custom instructions or system prompt:
 
 ## Authentication
 
-The MCP server supports two authentication methods:
+The MCP server supports three authentication methods. See
+**[Authenticating the Skylight MCP server](docs/getting-a-token.md)** for
+copy-paste ways to grab the tokens.
 
-### Option 1: Email/Password (Recommended)
+### Option 1: OAuth Refresh Token (Recommended — self-renewing)
 
-Use your Skylight account credentials. The server will automatically log in and manage tokens.
+Give the server a long-lived **refresh token** and it mints/renews its own
+access tokens automatically — you set it once and (almost) never re-capture.
 
 ```env
-SKYLIGHT_EMAIL=your_email@example.com
-SKYLIGHT_PASSWORD=your_password
+SKYLIGHT_REFRESH_TOKEN=your_refresh_token
 SKYLIGHT_FRAME_ID=your_frame_id
+# optional: SKYLIGHT_TOKEN_CACHE=/path/token.json
 ```
 
-### Option 2: Manual Token (Recommended in practice)
+### Option 2: Manual Bearer Token (short-lived)
 
-Capture a Bearer session token from the Skylight web app. This is currently the
-reliable method, because the email/password login endpoint is version-gated.
-See **[Getting a Skylight Bearer token](docs/getting-a-token.md)** for easy
-copy-paste ways to grab it (a DevTools console snippet, a bookmarklet, or a
-`chrome://net-export` capture).
+Capture a Bearer access token from the Skylight web app. Simple, but it expires
+in ~an hour and must be re-captured.
 
 ```env
 SKYLIGHT_TOKEN=your_token_here
 SKYLIGHT_FRAME_ID=your_frame_id
 SKYLIGHT_AUTH_TYPE=bearer
+```
+
+### Option 3: Email/Password (currently blocked)
+
+Skylight's `/api/sessions` login is version-gated and rejects these, so it
+doesn't currently work — use Option 1 or 2.
+
+```env
+SKYLIGHT_EMAIL=your_email@example.com
+SKYLIGHT_PASSWORD=your_password
+SKYLIGHT_FRAME_ID=your_frame_id
 ```
 
 ### Finding your Frame ID

@@ -1,8 +1,47 @@
-# Getting a Skylight Bearer token
+# Authenticating the Skylight MCP server
 
-The Skylight web app (`https://app.ourskylight.com`) authenticates each API
-request with an `Authorization: Bearer <token>` header. You can grab that token
-and use it directly with the MCP server:
+Skylight's web app authenticates with OAuth2 (`client_id=skylight-mobile`) against
+`https://app.ourskylight.com`. The email/password endpoint (`/api/sessions`) is
+version-gated and rejects logins (*"This version of Skylight is no longer
+supported."*), so the server uses tokens captured from a logged-in web session.
+
+There are two options, **best first**.
+
+## ✅ Recommended: OAuth refresh token (self-renewing — set it once)
+
+Access (Bearer) tokens expire after ~an hour, but the `skylight-mobile` client is
+issued a **long-lived refresh token**. Give the server that, and it mints/renews
+its own access tokens automatically — you (almost) never capture again:
+
+```env
+SKYLIGHT_REFRESH_TOKEN=<refresh token>
+SKYLIGHT_FRAME_ID=<your_frame_id>
+# optional: SKYLIGHT_OAUTH_CLIENT_ID=skylight-mobile  (default)
+# optional: SKYLIGHT_TOKEN_CACHE=/path/token.json  (persists a rotated refresh token across restarts)
+```
+
+**Get the refresh token** — on `app.ourskylight.com`, open DevTools → **Console**:
+
+```js
+const all = { ...localStorage, ...sessionStorage };
+const out = {};
+for (const [k, v] of Object.entries(all))
+  if (/token|auth|session|oauth/i.test(k) || /refresh_token|access_token/i.test(String(v))) out[k] = v;
+console.log(out); try { copy(JSON.stringify(out, null, 2)); } catch {}
+```
+
+Look for a `refresh_token` value (usually in a JSON blob next to `access_token`)
+and set it as `SKYLIGHT_REFRESH_TOKEN`.
+
+> ⚠️ A refresh token is a **long-lived, powerful credential** (it can mint access
+> tokens until revoked). Treat it like a password — keep it in env, never commit
+> it. Signing out of that web session revokes it. If `SKYLIGHT_TOKEN_CACHE` is
+> set, the server persists rotated refresh tokens there (mode `600`).
+
+## Short-lived: capture a Bearer access token
+
+If you'd rather not use a refresh token, grab a short-lived Bearer access token
+and set it directly (you'll re-capture it whenever it expires):
 
 ```env
 SKYLIGHT_TOKEN=<token>
@@ -10,13 +49,7 @@ SKYLIGHT_AUTH_TYPE=bearer
 SKYLIGHT_FRAME_ID=<your_frame_id>
 ```
 
-> **Why token auth?** The email/password login endpoint (`/api/sessions`) is
-> version-gated for app clients and currently rejects logins with
-> *"This version of Skylight is no longer supported."* The web app signs in via
-> SSO and yields a Bearer token, so capturing that token is the reliable path.
->
-> Tokens expire — when the server starts returning `401`s, grab a fresh one with
-> any method below.
+Grab it with any method below.
 
 ---
 
