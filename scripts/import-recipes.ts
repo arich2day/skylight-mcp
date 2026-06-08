@@ -2,71 +2,168 @@
  * Bulk-import recipes into Skylight.
  *
  * Usage:
- *   npx tsx scripts/import-recipes.ts                 # imports scripts/recipes.json
- *   npx tsx scripts/import-recipes.ts --dry           # print the formatted output, create nothing
- *   npx tsx scripts/import-recipes.ts path/to/file.json
+ *   npx tsx scripts/import-recipes.ts                      # imports scripts/recipes.json
+ *   npx tsx scripts/import-recipes.ts scripts/recipes.csv  # CSV input
+ *   npx tsx scripts/import-recipes.ts <file> --dry         # print formatted output, create nothing
  *
  * Requires env: SKYLIGHT_TOKEN (+ SKYLIGHT_AUTH_TYPE=bearer) and SKYLIGHT_FRAME_ID.
  * See docs/recipe-import.md for the input format and details.
  *
  * Skylight recipes only have: a name (summary), a single free-text `description`,
- * and a meal category. This script folds ingredients/instructions/extra details
- * into `description` using Skylight's own plain-text convention so it renders
- * cleanly in the app menus.
+ * and a meal category. This script folds ingredients/instructions and any extra
+ * details (protein, flavor, price, appliance, side, picky-eater option, etc.)
+ * into `description` using Skylight's plain-text convention so it renders cleanly
+ * in the app menus.
  */
 import { readFileSync } from "node:fs";
 import { createRecipe, getMealCategories } from "../src/api/endpoints/meals.js";
 
 export interface RecipeInput {
   name: string;
-  category?: string; // Breakfast / Lunch / Dinner / Snack ... (matched by name)
+  category?: string; // Breakfast / Lunch / Dinner / Snack (matched by label)
+  protein?: string;
+  style?: string; // style / flavor profile
+  price?: string | number; // per serving
+  appliance?: string;
   servings?: string | number;
   prep?: string;
   cook?: string;
-  ingredients?: string[] | string; // array, or newline/semicolon-separated string
-  instructions?: string[] | string;
+  ingredients?: string[] | string; // array, or comma/semicolon/newline-separated
+  instructions?: string[] | string; // array, or sentences/newlines/semicolons
+  side?: string; // suggested appetizer / side
+  pickyEater?: string; // picky-eater option
   notes?: string;
   source?: string;
 }
 
-function toLines(v?: string[] | string): string[] {
+function splitList(v: string[] | string | undefined, sep: RegExp): string[] {
   if (!v) return [];
-  const arr = Array.isArray(v) ? v : v.split(/\r?\n|;/);
+  const arr = Array.isArray(v) ? v : v.split(sep);
   return arr.map((s) => s.trim()).filter(Boolean);
+}
+
+const parseIngredients = (v?: string[] | string): string[] => splitList(v, /[,;\n]+/);
+
+function parseInstructions(v?: string[] | string): string[] {
+  if (!v) return [];
+  if (Array.isArray(v)) return v.map((s) => s.trim()).filter(Boolean);
+  // Prefer explicit separators; otherwise split a paragraph into sentences.
+  if (/\n|;/.test(v)) return v.split(/[\n;]+/).map((s) => s.trim()).filter(Boolean);
+  return v.split(/(?<=[.!?])\s+(?=["'(A-Z0-9])/).map((s) => s.trim()).filter(Boolean);
+}
+
+function formatPrice(p?: string | number): string {
+  if (p == null || p === "") return "";
+  const s = String(p).trim();
+  return `${s.startsWith("$") ? s : "$" + s}/serving`;
 }
 
 /** Build the single `description` blob using Skylight's Ingredients/Instructions convention. */
 export function buildDescription(r: RecipeInput): string {
   const blocks: string[] = [];
 
+  const headline = [r.style, r.protein, formatPrice(r.price)]
+    .map((s) => (s == null ? "" : String(s).trim()))
+    .filter(Boolean)
+    .join("  •  ");
+  if (headline) blocks.push(headline);
+
+  const sub: string[] = [];
+  if (r.appliance) sub.push(`Appliance: ${String(r.appliance).trim()}`);
   const meta: string[] = [];
   if (r.servings != null && r.servings !== "") meta.push(`Serves: ${r.servings}`);
   if (r.prep) meta.push(`Prep: ${r.prep}`);
   if (r.cook) meta.push(`Cook: ${r.cook}`);
-  if (meta.length) blocks.push(meta.join("   •   "));
+  if (meta.length) sub.push(meta.join("   •   "));
+  if (sub.length) blocks.push(sub.join("\n"));
 
-  const ingredients = toLines(r.ingredients);
+  const ingredients = parseIngredients(r.ingredients);
   if (ingredients.length) {
     blocks.push("Ingredients:\n" + ingredients.map((i) => (i.startsWith("-") ? i : `- ${i}`)).join("\n"));
   }
 
-  const steps = toLines(r.instructions);
+  const steps = parseInstructions(r.instructions);
   if (steps.length) {
     blocks.push("Instructions:\n" + steps.map((s, i) => (/^\d+[.)]/.test(s) ? s : `${i + 1}. ${s}`)).join("\n"));
   }
 
-  if (r.notes) blocks.push("Notes:\n" + r.notes.trim());
-  if (r.source) blocks.push(`Source: ${r.source.trim()}`);
+  const extras: string[] = [];
+  if (r.side) extras.push(`Side: ${String(r.side).trim()}`);
+  if (r.pickyEater) extras.push(`Picky eater: ${String(r.pickyEater).trim()}`);
+  if (extras.length) blocks.push(extras.join("\n"));
+
+  if (r.notes) blocks.push("Notes:\n" + String(r.notes).trim());
+  if (r.source) blocks.push(`Source: ${String(r.source).trim()}`);
 
   return blocks.join("\n\n");
 }
+
+// ---- CSV support ---------------------------------------------------------
+
+function parseCsv(text: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let field = "";
+  let inQuotes = false;
+  const s = text.replace(/\r\n?/g, "\n");
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (s[i + 1] === '"') { field += '"'; i++; }
+        else inQuotes = false;
+      } else field += ch;
+    } else if (ch === '"') {
+      inQuotes = true;
+    } else if (ch === ",") {
+      row.push(field); field = "";
+    } else if (ch === "\n") {
+      row.push(field); rows.push(row); row = []; field = "";
+    } else field += ch;
+  }
+  if (field.length || row.length) { row.push(field); rows.push(row); }
+  return rows.filter((r) => r.some((c) => c.trim().length));
+}
+
+const HEADER_MAP: Record<string, keyof RecipeInput> = {
+  category: "category",
+  recipename: "name", name: "name",
+  targetprotein: "protein", protein: "protein",
+  styleflavorprofile: "style", style: "style", flavorprofile: "style",
+  keyingredients: "ingredients", ingredients: "ingredients",
+  priceserv: "price", price: "price", priceserving: "price",
+  targetappliance: "appliance", appliance: "appliance",
+  stepbystepdirections: "instructions", directions: "instructions", instructions: "instructions", steps: "instructions",
+  suggestedappetizerside: "side", side: "side", suggestedside: "side",
+  pickyeateroption: "pickyEater", pickyeater: "pickyEater",
+  servings: "servings", prep: "prep", cook: "cook", notes: "notes", source: "source",
+};
+
+const normHeader = (h: string): string => h.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+function csvToRecipes(text: string): RecipeInput[] {
+  const rows = parseCsv(text);
+  if (!rows.length) return [];
+  const headers = rows[0].map(normHeader).map((h) => HEADER_MAP[h]);
+  return rows.slice(1).map((cells) => {
+    const r: Record<string, string> = {};
+    headers.forEach((key, idx) => {
+      const val = (cells[idx] ?? "").trim();
+      if (key && val) r[key] = val;
+    });
+    return r as unknown as RecipeInput;
+  }).filter((r) => r.name);
+}
+
+// ---- main ----------------------------------------------------------------
 
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
   const dry = args.includes("--dry");
   const file = args.find((a) => !a.startsWith("--")) ?? "scripts/recipes.json";
+  const raw = readFileSync(file, "utf8");
+  const recipes = file.toLowerCase().endsWith(".csv") ? csvToRecipes(raw) : (JSON.parse(raw) as RecipeInput[]);
 
-  const recipes = JSON.parse(readFileSync(file, "utf8")) as RecipeInput[];
   console.log(`Loaded ${recipes.length} recipe(s) from ${file}${dry ? "  (dry run — nothing will be created)" : ""}\n`);
 
   let categories: { id: string; name: string }[] = [];

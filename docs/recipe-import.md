@@ -35,8 +35,40 @@ so any "extra details" you have land in the right place automatically.
 
 ## Input format
 
-A JSON array of recipes (`ingredients`/`instructions` may be arrays **or** a
-single string split on newlines/semicolons). See `scripts/recipes.example.json`.
+Two input formats are supported, picked by file extension:
+
+- **CSV** (`*.csv`) — one recipe per row. Column headers are matched loosely
+  (case/spacing/punctuation ignored). Recognized columns:
+  `Recipe Name`, `Category`, `Target Protein`, `Style / Flavor Profile`,
+  `Key Ingredients`, `Price / Serv.`, `Target Appliance`,
+  `Step-by-Step Directions`, `Suggested Appetizer / Side`,
+  `Picky Eater Option` (plus `Servings`, `Prep`, `Cook`, `Notes`, `Source`).
+  Key ingredients may be comma-separated; directions can be one paragraph (they
+  get split into numbered steps).
+- **JSON** (`*.json`) — an array of recipe objects (`ingredients`/`instructions`
+  may be arrays **or** a single string). See `scripts/recipes.example.json`.
+
+Extra details that have no native Skylight field (protein, flavor, price/serving,
+appliance, side, picky-eater option, notes) are folded into the `description`
+as labeled lines so they still show up in the menu. Example layout:
+
+```
+Southern Comfort  •  Beef  •  $4.50/serving
+
+Appliance: Ninja Foodi (Sear + Pressure Cook)
+
+Ingredients:
+- Bone-in short ribs
+- ...
+
+Instructions:
+1. ...
+
+Side: Hot Crab Dip / Bread toast
+Picky eater: Safe: Fries & Mac & cheese. Try: Mini beef meatballs.
+```
+
+JSON object fields:
 
 ```json
 [
