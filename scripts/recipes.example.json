@@ -1,0 +1,29 @@
+[
+  {
+    "name": "Fluffy Pancakes",
+    "category": "Breakfast",
+    "servings": 4,
+    "prep": "20 min",
+    "ingredients": [
+      "2 cups pancake mix",
+      "Milk (same amount as water listed on the package)",
+      "2 eggs",
+      "1 tsp vanilla extract",
+      "Maple syrup, for serving"
+    ],
+    "instructions": [
+      "Preheat a lightly greased skillet over medium heat.",
+      "Combine pancake mix, milk, eggs, and vanilla; stir until just blended (a few lumps are fine).",
+      "Pour about 1/4 cup of batter per pancake.",
+      "Cook until bubbles form, then flip and cook until golden."
+    ],
+    "notes": "Add blueberries to the batter for a treat.",
+    "source": "Family favorite"
+  },
+  {
+    "name": "Weeknight Tacos",
+    "category": "Dinner",
+    "ingredients": "1 lb ground beef; 1 packet taco seasoning; tortillas; shredded lettuce; shredded cheese; salsa",
+    "instructions": "Brown the meat in a skillet; Stir in seasoning and water per packet; Simmer 5 minutes; Serve in tortillas with toppings"
+  }
+]
