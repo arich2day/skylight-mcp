@@ -71,7 +71,10 @@ async function main(): Promise<void> {
 
   let categories: { id: string; name: string }[] = [];
   if (!dry) {
-    categories = (await getMealCategories()).map((c) => ({ id: c.id, name: String(c.attributes.name ?? "") }));
+    categories = (await getMealCategories()).map((c) => {
+      const attrs = c.attributes as Record<string, unknown>;
+      return { id: c.id, name: String(attrs.label ?? attrs.name ?? "") };
+    });
     console.log("Available meal categories:", categories.map((c) => c.name).join(", ") || "(none)", "\n");
   }
 
