@@ -36,3 +36,5 @@ scripts/recipes.json
 # Local recipe import data
 scripts/recipes.csv
 scripts/recipes.test.csv
+scripts/recipes.remaining.csv
+scripts/recipes.remaining.named.csv

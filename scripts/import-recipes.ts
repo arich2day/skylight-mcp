@@ -163,6 +163,9 @@ async function main(): Promise<void> {
   const file = args.find((a) => !a.startsWith("--")) ?? "scripts/recipes.json";
   const limit = Number(args.find((a) => a.startsWith("--limit="))?.split("=")[1] ?? 0);
   const delayMs = Number(args.find((a) => a.startsWith("--delay="))?.split("=")[1] ?? 120);
+  // By default, recipes whose name already exists are skipped (idempotent /
+  // resumable). Pass --no-skip to create them anyway (e.g. intentional variants).
+  const skipExisting = !args.includes("--no-skip");
   const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
   const raw = readFileSync(file, "utf8");
   let recipes = file.toLowerCase().endsWith(".csv") ? csvToRecipes(raw) : (JSON.parse(raw) as RecipeInput[]);
@@ -185,7 +188,8 @@ async function main(): Promise<void> {
       const summary = (rec.attributes as Record<string, unknown>).summary;
       if (summary) existing.add(String(summary).trim().toLowerCase());
     }
-    console.log(`${existing.size} recipe(s) already on the account will be skipped.\n`);
+    if (skipExisting) console.log(`${existing.size} recipe(s) already on the account will be skipped.\n`);
+    else console.log(`--no-skip: existing names will NOT be skipped.\n`);
   }
 
   const isAuthError = (e: unknown): boolean => {
@@ -230,7 +234,7 @@ async function main(): Promise<void> {
     }
 
     const key = r.name.trim().toLowerCase();
-    if (existing.has(key)) { skipped++; continue; }
+    if (skipExisting && existing.has(key)) { skipped++; continue; }
 
     const categoryId = resolveCategory(r.category);
     if (r.category && !categoryId) {
