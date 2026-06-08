@@ -40,7 +40,7 @@ export interface ChoreAttributes {
   is_future: boolean | null;
   recurring: boolean;
   recurring_until: string | null;
-  recurrence_set: string | null;
+  recurrence_set: string[] | null;
   reward_points: number | null;
   emoji_icon: string | null;
   routine: boolean | null;
@@ -190,13 +190,26 @@ export type RewardsResponse = JsonApiResponse<RewardResource[]>;
 export type RewardPointsResponse = JsonApiResponse<RewardPointResource[]>;
 
 // Request body types for creating resources
-export interface CreateChoreRequest {
-  data: {
-    type: "chore";
-    attributes: Partial<ChoreAttributes>;
-    relationships?: ChoreRelationships;
-  };
+// Chore write body.
+// NOTE: The Skylight API expects a FLAT JSON body for chore create/update
+// (not a JSON:API { data: { attributes, relationships } } envelope), with the
+// assignee passed as a numeric `category_id`.
+export interface ChoreWriteBody {
+  summary?: string;
+  description?: string | null;
+  start?: string;
+  start_time?: string | null;
+  status?: string;
+  recurring?: boolean;
+  // One or more RRULE strings. Routines must use exactly one BYHOUR of 6, 14, or 20.
+  recurrence_set?: string[] | null;
+  reward_points?: number | null;
+  emoji_icon?: string | null;
+  routine?: boolean;
+  category_id?: number | null;
 }
+
+export type CreateChoreRequest = ChoreWriteBody;
 
 export interface CreateTaskBoxItemRequest {
   data: {
@@ -286,49 +299,21 @@ export interface UpdateCalendarEventRequest {
 export type CalendarEventResponse = JsonApiResponse<CalendarEventResource>;
 
 // Chore update request type
-export interface UpdateChoreRequest {
-  data: {
-    type: "chore";
-    attributes: Partial<ChoreAttributes>;
-    relationships?: ChoreRelationships;
-  };
+export type UpdateChoreRequest = ChoreWriteBody;
+
+// Reward write body.
+// NOTE: Like chores, the Skylight API expects a FLAT JSON body for reward
+// create/update, with assignees passed as a numeric `category_ids` array.
+export interface RewardWriteBody {
+  name?: string;
+  description?: string | null;
+  emoji_icon?: string | null;
+  point_value?: number;
+  respawn_on_redemption?: boolean;
+  category_ids?: number[];
 }
 
-// Reward request types
-export interface CreateRewardRequest {
-  data: {
-    type: "reward";
-    attributes: {
-      name: string;
-      description?: string | null;
-      emoji_icon?: string | null;
-      point_value: number;
-      respawn_on_redemption?: boolean;
-    };
-    relationships?: {
-      categories?: {
-        data: JsonApiResourceId[];
-      };
-    };
-  };
-}
-
-export interface UpdateRewardRequest {
-  data: {
-    type: "reward";
-    attributes: Partial<{
-      name: string;
-      description: string | null;
-      emoji_icon: string | null;
-      point_value: number;
-      respawn_on_redemption: boolean;
-    }>;
-    relationships?: {
-      categories?: {
-        data: JsonApiResourceId[];
-      };
-    };
-  };
-}
+export type CreateRewardRequest = RewardWriteBody;
+export type UpdateRewardRequest = RewardWriteBody;
 
 export type RewardResponse = JsonApiResponse<RewardResource>;

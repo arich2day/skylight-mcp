@@ -103,4 +103,8 @@ The release workflow (`.github/workflows/release.yml`) will:
 ## API Quirks
 
 - **Calendar date_max is exclusive**: When querying calendar events, `date_max` is treated as exclusive. The code adds 1 day to include events on the end date.
-- **Auth format**: API expects `Basic base64(userId:token)`, not Bearer tokens.
+- **Auth format**: Email/password login uses `Basic base64(userId:token)`. The web app's session token is a plain Bearer token — set `SKYLIGHT_TOKEN` with `SKYLIGHT_AUTH_TYPE=bearer` to reuse a captured session and skip login.
+- **Writes use flat bodies, not JSON:API**: Chore/reward create/update send a flat JSON body. The assignee is a numeric `category_id` (chores) or `category_ids` array (rewards) — *not* a `relationships` object. GET responses are still JSON:API (`data`/`attributes`/`relationships`).
+- **`recurrence_set` is an array of RRULE strings**: A single string silently saves as non-recurring. A multi-day `BYDAY=FR,SA` in one rule is rejected ("Valid FREQ value is required"); send one rule per day instead.
+- **Routines**: Chores with `routine: true` must have exactly one `BYHOUR` of `6` (morning), `14` (midday), or `20` (evening).
+- **Deleting recurring chores**: Requires an `apply_to` query param (`all` / `this` / `this_and_future`). Delete responses may have an empty body.

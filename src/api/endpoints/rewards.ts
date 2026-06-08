@@ -48,33 +48,27 @@ export interface CreateRewardOptions {
 }
 
 /**
- * Create a new reward
+ * Create a new reward.
+ * Sends a flat JSON body with a numeric `category_ids` array (not a JSON:API envelope).
  */
 export async function createReward(options: CreateRewardOptions): Promise<RewardResource> {
   const client = getClient();
   const request: CreateRewardRequest = {
-    data: {
-      type: "reward",
-      attributes: {
-        name: options.name,
-        point_value: options.pointValue,
-        description: options.description ?? null,
-        emoji_icon: options.emojiIcon ?? null,
-        respawn_on_redemption: options.respawnOnRedemption ?? false,
-      },
-    },
+    name: options.name,
+    point_value: options.pointValue,
+    description: options.description ?? null,
+    emoji_icon: options.emojiIcon ?? null,
+    respawn_on_redemption: options.respawnOnRedemption ?? false,
   };
 
   if (options.categoryIds && options.categoryIds.length > 0) {
-    request.data.relationships = {
-      categories: {
-        data: options.categoryIds.map((id) => ({ type: "category", id })),
-      },
-    };
+    request.category_ids = options.categoryIds.map((id) => Number(id));
   }
 
   const response = await client.post<RewardResponse>("/api/frames/{frameId}/rewards", request);
-  return response.data;
+  // Reward create returns the resource either directly or as a single-element array.
+  const data = response.data as RewardResource | RewardResource[];
+  return Array.isArray(data) ? data[0] : data;
 }
 
 export interface UpdateRewardOptions {
@@ -94,34 +88,25 @@ export async function updateReward(
   options: UpdateRewardOptions
 ): Promise<RewardResource> {
   const client = getClient();
-  const request: UpdateRewardRequest = {
-    data: {
-      type: "reward",
-      attributes: {},
-    },
-  };
+  const request: UpdateRewardRequest = {};
 
-  if (options.name !== undefined) request.data.attributes.name = options.name;
-  if (options.pointValue !== undefined) request.data.attributes.point_value = options.pointValue;
-  if (options.description !== undefined) request.data.attributes.description = options.description;
-  if (options.emojiIcon !== undefined) request.data.attributes.emoji_icon = options.emojiIcon;
+  if (options.name !== undefined) request.name = options.name;
+  if (options.pointValue !== undefined) request.point_value = options.pointValue;
+  if (options.description !== undefined) request.description = options.description;
+  if (options.emojiIcon !== undefined) request.emoji_icon = options.emojiIcon;
   if (options.respawnOnRedemption !== undefined) {
-    request.data.attributes.respawn_on_redemption = options.respawnOnRedemption;
+    request.respawn_on_redemption = options.respawnOnRedemption;
   }
-
   if (options.categoryIds) {
-    request.data.relationships = {
-      categories: {
-        data: options.categoryIds.map((id) => ({ type: "category", id })),
-      },
-    };
+    request.category_ids = options.categoryIds.map((id) => Number(id));
   }
 
   const response = await client.request<RewardResponse>(
     `/api/frames/{frameId}/rewards/${rewardId}`,
     { method: "PATCH", body: request }
   );
-  return response.data;
+  const data = response.data as RewardResource | RewardResource[];
+  return Array.isArray(data) ? data[0] : data;
 }
 
 /**

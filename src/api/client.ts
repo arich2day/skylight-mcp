@@ -206,12 +206,16 @@ export class SkylightClient {
       await this.handleResponseError(response, url);
     }
 
-    // Handle 304 Not Modified
-    if (response.status === 304) {
+    // Handle 304 Not Modified and empty bodies (e.g. 204, some DELETEs)
+    if (response.status === 304 || response.status === 204) {
       return {} as T;
     }
 
-    return response.json() as Promise<T>;
+    const text = await response.text();
+    if (!text) {
+      return {} as T;
+    }
+    return JSON.parse(text) as T;
   }
 
   /**
