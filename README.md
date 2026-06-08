@@ -98,9 +98,13 @@ SKYLIGHT_PASSWORD=your_password
 SKYLIGHT_FRAME_ID=your_frame_id
 ```
 
-### Option 2: Manual Token (Legacy)
+### Option 2: Manual Token (Recommended in practice)
 
-Capture a token from the Skylight app using a proxy tool.
+Capture a Bearer session token from the Skylight web app. This is currently the
+reliable method, because the email/password login endpoint is version-gated.
+See **[Getting a Skylight Bearer token](docs/getting-a-token.md)** for easy
+copy-paste ways to grab it (a DevTools console snippet, a bookmarklet, or a
+`chrome://net-export` capture).
 
 ```env
 SKYLIGHT_TOKEN=your_token_here
