@@ -39,14 +39,15 @@ npm run generate:types # Generate TypeScript types from OpenAPI spec
 
 ## Authentication
 
-Two methods supported (validated via Zod refinement in `config.ts`):
+Three methods supported (validated via Zod refinement in `config.ts`):
 
-1. **Email/Password** (recommended): Set `SKYLIGHT_EMAIL` and `SKYLIGHT_PASSWORD`. Server auto-logs in via POST /api/sessions and uses `Basic base64(userId:token)` format for subsequent requests.
-2. **Manual Token**: Set `SKYLIGHT_TOKEN` and optionally `SKYLIGHT_AUTH_TYPE` (bearer/basic).
+1. **OAuth refresh token** (recommended, self-renewing): Set `SKYLIGHT_REFRESH_TOKEN`. The client mints/renews short-lived Bearer access tokens via `POST /oauth/token` (`grant_type=refresh_token`, `client_id=skylight-mobile`). See `api/oauth.ts`. Optional `SKYLIGHT_OAUTH_CLIENT_ID` and `SKYLIGHT_TOKEN_CACHE` (persists a rotated refresh token across restarts).
+2. **Manual Token**: Set `SKYLIGHT_TOKEN` (a captured Bearer access token) and optionally `SKYLIGHT_AUTH_TYPE` (bearer/basic). Short-lived; expires in ~an hour.
+3. **Email/Password**: Set `SKYLIGHT_EMAIL` and `SKYLIGHT_PASSWORD`. *Currently blocked* — `/api/sessions` is version-gated and returns "no longer supported".
 
-Both require `SKYLIGHT_FRAME_ID` (household identifier from API URLs like `/api/frames/{frameId}/chores`).
+All require `SKYLIGHT_FRAME_ID` (household identifier from API URLs like `/api/frames/{frameId}/chores`).
 
-**Note**: The Skylight API uses Basic auth with the format `Basic base64(userId:token)`, not Bearer tokens.
+**Auth flow**: Skylight is OAuth2 (`/oauth/authorize` + `/oauth/token`). Access tokens are plain Bearer tokens. The legacy email/password path used `Basic base64(userId:token)`. See `docs/getting-a-token.md`.
 
 ## Plus Subscription
 
@@ -103,4 +104,45 @@ The release workflow (`.github/workflows/release.yml`) will:
 ## API Quirks
 
 - **Calendar date_max is exclusive**: When querying calendar events, `date_max` is treated as exclusive. The code adds 1 day to include events on the end date.
-- **Auth format**: API expects `Basic base64(userId:token)`, not Bearer tokens.
+- **Auth format**: Email/password login uses `Basic base64(userId:token)`. The web app's session token is a plain Bearer token — set `SKYLIGHT_TOKEN` with `SKYLIGHT_AUTH_TYPE=bearer` to reuse a captured session and skip login.
+- **Writes use flat bodies, not JSON:API**: Chore/reward create/update send a flat JSON body. The assignee is a numeric `category_id` (chores) or `category_ids` array (rewards) — *not* a `relationships` object. GET responses are still JSON:API (`data`/`attributes`/`relationships`).
+- **`recurrence_set` is an array of RRULE strings**: A single string silently saves as non-recurring. A multi-day `BYDAY=FR,SA` in one rule is rejected ("Valid FREQ value is required"); send one rule per day instead.
+- **Routines**: Chores with `routine: true` must have exactly one `BYHOUR` of `6` (morning), `14` (midday), or `20` (evening).
+- **Deleting recurring chores**: Requires an `apply_to` query param (`all` / `this` / `this_and_future`). Delete responses may have an empty body.
+
+## Recipe Import (remembered convention)
+
+A Skylight recipe has only three writable parts: `summary` (the name), one
+free-text `description`, and a meal category (Breakfast/Lunch/Dinner/Snack,
+matched by the category's `label`). There are **no** structured fields for
+ingredients, steps, price, appliance, etc. — those all go into `description`.
+
+**Always import recipes with `scripts/import-recipes.ts`** (don't hand-format):
+
+```bash
+npx tsx scripts/import-recipes.ts <file.csv|file.json> --dry   # preview, creates nothing
+npx tsx scripts/import-recipes.ts <file.csv|file.json>         # create for real
+```
+
+Requires `SKYLIGHT_TOKEN` (+ `SKYLIGHT_AUTH_TYPE=bearer`) and `SKYLIGHT_FRAME_ID`.
+The token expires — capture a fresh one per `docs/getting-a-token.md`. Personal
+recipe data lives in `scripts/recipes.csv` / `scripts/recipes.json` (git-ignored).
+
+**Description format (the "conversion" to preserve)** — extra details with no
+native field are folded into `description` in this order:
+
+1. Headline: `{Style/Flavor}  •  {Protein}  •  ${Price}/serving`
+2. `Appliance: …` then a `Serves: … • Prep: … • Cook: …` line
+3. `Ingredients:` with `- ` bullet lines (key ingredients split on commas)
+4. `Instructions:` numbered steps (a directions paragraph is split into sentences)
+5. `Side: …`, then `Picky eater: …`, then `Notes:`, then `Source: …`
+
+CSV headers are matched loosely (case/spacing/punctuation ignored): Recipe Name,
+Category, Target Protein, Style / Flavor Profile, Key Ingredients, Price / Serv.,
+Target Appliance, Step-by-Step Directions, Suggested Appetizer / Side, Picky
+Eater Option (plus Servings/Prep/Cook/Notes/Source). See `docs/recipe-import.md`.
+
+Skylight has only four meal categories (Breakfast/Lunch/Dinner/Snack) and new
+ones can't be created via the API (`POST /meals/categories` → 404). The importer
+maps non-native categories: `Lunch Prep → Lunch`, `Smoothie → Breakfast`,
+`Kids Meal → Snack` (see `CATEGORY_ALIASES` in the script).

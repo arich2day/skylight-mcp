@@ -22,15 +22,10 @@ export async function createTaskBoxItem(
   const client = getClient();
 
   const request: CreateTaskBoxItemRequest = {
-    data: {
-      type: "task_box_item",
-      attributes: {
-        summary: options.summary,
-        emoji_icon: options.emojiIcon ?? null,
-        routine: options.routine ?? false,
-        reward_points: options.rewardPoints ?? null,
-      },
-    },
+    summary: options.summary,
+    emoji_icon: options.emojiIcon ?? null,
+    routine: options.routine ?? false,
+    reward_points: options.rewardPoints ?? null,
   };
 
   const response = await client.post<TaskBoxItemResponse>(

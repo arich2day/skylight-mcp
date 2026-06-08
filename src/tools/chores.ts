@@ -7,6 +7,73 @@ import { getTodayDate, getDateOffset, parseDate, parseTime, formatDateForDisplay
 import { formatErrorForMcp } from "../utils/errors.js";
 import { getConfig } from "../config.js";
 
+// Routines are anchored to a time-of-day slot; the API only accepts these hours.
+const ROUTINE_HOURS = { morning: 6, midday: 14, evening: 20 } as const;
+type TimeOfDay = keyof typeof ROUTINE_HOURS;
+
+const DAY_CODES: Record<string, string> = {
+  su: "SU", sun: "SU", sunday: "SU",
+  mo: "MO", mon: "MO", monday: "MO",
+  tu: "TU", tue: "TU", tues: "TU", tuesday: "TU",
+  we: "WE", wed: "WE", wednesday: "WE",
+  th: "TH", thu: "TH", thur: "TH", thurs: "TH", thursday: "TH",
+  fr: "FR", fri: "FR", friday: "FR",
+  sa: "SA", sat: "SA", saturday: "SA",
+};
+
+/** Parse a list like "SU,WE" / "mon wed fri" into RRULE day codes, or null if not all are day names. */
+function parseDays(input?: string): string[] | null {
+  if (!input) return null;
+  const tokens = input.split(/[,\s]+/).map((t) => t.trim().toLowerCase()).filter(Boolean);
+  if (!tokens.length) return null;
+  const codes = tokens.map((t) => DAY_CODES[t]);
+  if (codes.some((c) => !c)) return null;
+  return [...new Set(codes)];
+}
+
+/** The Skylight API rejects a single RRULE with a multi-day BYDAY list, so expand to one rule per day. */
+function splitRrule(rrule: string): string[] {
+  const match = rrule.match(/BYDAY=([^;]+)/i);
+  if (!match) return [rrule];
+  const days = match[1].split(",").map((d) => d.trim()).filter(Boolean);
+  if (days.length <= 1) return [rrule];
+  return days.map((d) => rrule.replace(/BYDAY=[^;]+/i, `BYDAY=${d}`));
+}
+
+/**
+ * Build the recurrence_set array the API expects.
+ * - Routines: daily at a time slot (optionally limited to specific weekdays).
+ * - Otherwise: daily/weekly/weekdays, a day list, or raw RRULE(s) (multi-day BYDAY expanded).
+ */
+export function buildRecurrenceSet(opts: {
+  recurring?: boolean;
+  routine?: boolean;
+  recurrencePattern?: string;
+  timeOfDay?: TimeOfDay;
+}): string[] | undefined {
+  const { recurring, routine, recurrencePattern, timeOfDay } = opts;
+  if (!recurring && !routine) return undefined;
+
+  if (routine) {
+    const hour = ROUTINE_HOURS[timeOfDay ?? "morning"];
+    const days = parseDays(recurrencePattern);
+    if (days) return days.map((d) => `RRULE:FREQ=WEEKLY;BYHOUR=${hour};BYDAY=${d}`);
+    return [`RRULE:FREQ=DAILY;BYHOUR=${hour}`];
+  }
+
+  const pattern = (recurrencePattern ?? "daily").trim();
+  const lower = pattern.toLowerCase();
+  if (lower === "daily") return ["RRULE:FREQ=DAILY"];
+  if (lower === "weekly") return ["RRULE:FREQ=WEEKLY"];
+  if (lower === "weekdays") return parseDays("mo tu we th fr")!.map((d) => `RRULE:FREQ=WEEKLY;BYDAY=${d}`);
+
+  const days = parseDays(pattern);
+  if (days) return days.map((d) => `RRULE:FREQ=WEEKLY;BYDAY=${d}`);
+
+  if (/^RRULE:/i.test(pattern)) return splitRrule(pattern);
+  return [pattern];
+}
+
 export function registerChoreTools(server: McpServer): void {
   // get_chores tool
   server.tool(
@@ -172,13 +239,26 @@ The chore will appear on the Skylight display.`,
       recurrencePattern: z
         .string()
         .optional()
-        .describe("For recurring: 'daily', 'weekly', 'weekdays', or RRULE string"),
+        .describe("For recurring: 'daily', 'weekly', 'weekdays', a day list like 'SU,WE' / 'mon wed fri', or an RRULE string"),
+      routine: z
+        .boolean()
+        .optional()
+        .default(false)
+        .describe("Make this a Skylight routine (a morning/midday/evening checklist item) instead of a plain chore"),
+      timeOfDay: z
+        .enum(["morning", "midday", "evening"])
+        .optional()
+        .describe("Time slot for a routine: morning (6am), midday (2pm), or evening (8pm). Defaults to morning."),
+      description: z
+        .string()
+        .optional()
+        .describe("Optional details/sub-tasks shown under the chore (e.g. 'Get dressed, make bed, brush teeth')"),
       rewardPoints: z
         .number()
         .optional()
         .describe("Reward points for completing this chore"),
     },
-    async ({ summary, date, time, assignee, recurring, recurrencePattern, rewardPoints }) => {
+    async ({ summary, date, time, assignee, recurring, recurrencePattern, routine, timeOfDay, description, rewardPoints }) => {
       try {
         const config = getConfig();
         const choreDate = date ? parseDate(date, config.timezone) : getTodayDate(config.timezone);
@@ -202,30 +282,24 @@ The chore will appear on the Skylight display.`,
           }
         }
 
-        // Convert simple recurrence patterns to RRULE
-        let recurrenceSet: string | undefined;
-        if (recurring && recurrencePattern) {
-          const pattern = recurrencePattern.toLowerCase();
-          if (pattern === "daily") {
-            recurrenceSet = "RRULE:FREQ=DAILY";
-          } else if (pattern === "weekly") {
-            recurrenceSet = "RRULE:FREQ=WEEKLY";
-          } else if (pattern === "weekdays") {
-            recurrenceSet = "RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR";
-          } else if (pattern.startsWith("RRULE:")) {
-            recurrenceSet = pattern;
-          } else {
-            recurrenceSet = recurrencePattern;
-          }
-        }
+        // Routines are inherently recurring (anchored to a time-of-day slot).
+        const isRecurring = (recurring ?? false) || (routine ?? false);
+        const recurrenceSet = buildRecurrenceSet({
+          recurring: isRecurring,
+          routine,
+          recurrencePattern,
+          timeOfDay,
+        });
 
         const chore = await createChore({
           summary,
           start: choreDate,
           startTime: time ? parseTime(time) : undefined,
           categoryId,
-          recurring: recurring ?? false,
+          recurring: isRecurring,
           recurrenceSet,
+          routine,
+          description,
           rewardPoints,
         });
 
@@ -356,13 +430,18 @@ Use this when:
 Parameters:
 - choreId (required): ID of the chore to delete (from get_chores)
 
-Note: This permanently removes the chore. For recurring chores, this may only delete one instance.`,
+Note: This permanently removes the chore. For recurring chores, 'applyTo' controls scope.`,
     {
       choreId: z.string().describe("ID of the chore to delete"),
+      applyTo: z
+        .enum(["all", "this", "this_and_future"])
+        .optional()
+        .default("all")
+        .describe("For recurring chores: delete the whole series ('all'), just this occurrence ('this'), or this and future ('this_and_future')"),
     },
-    async ({ choreId }) => {
+    async ({ choreId, applyTo }) => {
       try {
-        await deleteChore(choreId);
+        await deleteChore(choreId, applyTo);
         return {
           content: [
             {

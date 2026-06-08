@@ -67,8 +67,12 @@ export async function findListByType(
   return filtered[0];
 }
 
+// The API requires a valid hex color on list create; default to "Blue" from the
+// Skylight palette when the caller doesn't supply one.
+const DEFAULT_LIST_COLOR = "#2178AF";
+
 /**
- * Create a new list
+ * Create a new list (flat JSON body; `color` is required by the API).
  */
 export async function createList(
   label: string,
@@ -77,33 +81,23 @@ export async function createList(
 ): Promise<ListResource> {
   const client = getClient();
   const request: CreateListRequest = {
-    data: {
-      type: "list",
-      attributes: {
-        label,
-        kind,
-        color: color ?? null,
-      },
-    },
+    label,
+    kind,
+    color: color ?? DEFAULT_LIST_COLOR,
   };
   const response = await client.post<ListResponse>("/api/frames/{frameId}/lists", request);
   return response.data;
 }
 
 /**
- * Update an existing list
+ * Update an existing list (flat JSON body).
  */
 export async function updateList(
   listId: string,
   updates: { label?: string; kind?: "shopping" | "to_do"; color?: string | null }
 ): Promise<ListResource> {
   const client = getClient();
-  const request: UpdateListRequest = {
-    data: {
-      type: "list",
-      attributes: updates,
-    },
-  };
+  const request: UpdateListRequest = updates;
   const response = await client.request<ListResponse>(`/api/frames/{frameId}/lists/${listId}`, {
     method: "PUT",
     body: request,
@@ -129,13 +123,8 @@ export async function createListItem(
 ): Promise<ListItemResource> {
   const client = getClient();
   const request: CreateListItemRequest = {
-    data: {
-      type: "list_item",
-      attributes: {
-        label,
-        section: section ?? null,
-      },
-    },
+    label,
+    section: section ?? null,
   };
   const response = await client.post<ListItemResponse>(
     `/api/frames/{frameId}/lists/${listId}/list_items`,
@@ -153,12 +142,7 @@ export async function updateListItem(
   updates: { label?: string; status?: "pending" | "completed"; section?: string | null }
 ): Promise<ListItemResource> {
   const client = getClient();
-  const request: UpdateListItemRequest = {
-    data: {
-      type: "list_item",
-      attributes: updates,
-    },
-  };
+  const request: UpdateListItemRequest = updates;
   const response = await client.request<ListItemResponse>(
     `/api/frames/{frameId}/lists/${listId}/list_items/${itemId}`,
     { method: "PUT", body: request }

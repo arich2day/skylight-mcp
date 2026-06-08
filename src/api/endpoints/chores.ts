@@ -52,45 +52,37 @@ export interface CreateChoreOptions {
   startTime?: string;
   status?: string;
   recurring?: boolean;
-  recurrenceSet?: string;
+  /** One or more RRULE strings. Routines must use exactly one BYHOUR of 6, 14, or 20. */
+  recurrenceSet?: string[];
   categoryId?: string;
   rewardPoints?: number;
   emojiIcon?: string;
+  routine?: boolean;
+  description?: string;
 }
 
 /**
- * Create a new chore
+ * Create a new chore.
+ * Sends a flat JSON body (not a JSON:API envelope) with a numeric `category_id`,
+ * matching what the Skylight API expects.
  */
 export async function createChore(options: CreateChoreOptions): Promise<ChoreResource> {
   const client = getClient();
 
   const request: CreateChoreRequest = {
-    data: {
-      type: "chore",
-      attributes: {
-        summary: options.summary,
-        start: options.start,
-        start_time: options.startTime ?? null,
-        status: options.status ?? "pending",
-        recurring: options.recurring ?? false,
-        recurrence_set: options.recurrenceSet ?? null,
-        reward_points: options.rewardPoints ?? null,
-        emoji_icon: options.emojiIcon ?? null,
-      },
-    },
+    summary: options.summary,
+    start: options.start,
+    start_time: options.startTime ?? null,
+    status: options.status ?? "pending",
+    recurring: options.recurring ?? false,
+    recurrence_set: options.recurrenceSet ?? null,
+    reward_points: options.rewardPoints ?? null,
+    emoji_icon: options.emojiIcon ?? null,
   };
 
-  // Add category relationship if provided
-  if (options.categoryId) {
-    request.data.relationships = {
-      category: {
-        data: {
-          type: "category",
-          id: options.categoryId,
-        },
-      },
-    };
-  }
+  if (options.routine !== undefined) request.routine = options.routine;
+  if (options.description !== undefined) request.description = options.description;
+  if (options.categoryId) request.category_id = Number(options.categoryId);
 
   const response = await client.post<ChoreResponse>(
     "/api/frames/{frameId}/chores",
@@ -106,14 +98,16 @@ export interface UpdateChoreOptions {
   startTime?: string | null;
   status?: string;
   recurring?: boolean;
-  recurrenceSet?: string | null;
+  recurrenceSet?: string[] | null;
   categoryId?: string | null;
   rewardPoints?: number | null;
   emojiIcon?: string | null;
+  routine?: boolean;
+  description?: string | null;
 }
 
 /**
- * Update an existing chore
+ * Update an existing chore (flat JSON body, numeric `category_id`).
  */
 export async function updateChore(
   choreId: string,
@@ -121,32 +115,20 @@ export async function updateChore(
 ): Promise<ChoreResource> {
   const client = getClient();
 
-  const request: UpdateChoreRequest = {
-    data: {
-      type: "chore",
-      attributes: {},
-    },
-  };
+  const request: UpdateChoreRequest = {};
 
-  // Map options to attributes
-  if (options.summary !== undefined) request.data.attributes.summary = options.summary;
-  if (options.start !== undefined) request.data.attributes.start = options.start;
-  if (options.startTime !== undefined) request.data.attributes.start_time = options.startTime;
-  if (options.status !== undefined) request.data.attributes.status = options.status;
-  if (options.recurring !== undefined) request.data.attributes.recurring = options.recurring;
-  if (options.recurrenceSet !== undefined) request.data.attributes.recurrence_set = options.recurrenceSet;
-  if (options.rewardPoints !== undefined) request.data.attributes.reward_points = options.rewardPoints;
-  if (options.emojiIcon !== undefined) request.data.attributes.emoji_icon = options.emojiIcon;
-
-  // Handle category relationship
+  if (options.summary !== undefined) request.summary = options.summary;
+  if (options.start !== undefined) request.start = options.start;
+  if (options.startTime !== undefined) request.start_time = options.startTime;
+  if (options.status !== undefined) request.status = options.status;
+  if (options.recurring !== undefined) request.recurring = options.recurring;
+  if (options.recurrenceSet !== undefined) request.recurrence_set = options.recurrenceSet;
+  if (options.rewardPoints !== undefined) request.reward_points = options.rewardPoints;
+  if (options.emojiIcon !== undefined) request.emoji_icon = options.emojiIcon;
+  if (options.routine !== undefined) request.routine = options.routine;
+  if (options.description !== undefined) request.description = options.description;
   if (options.categoryId !== undefined) {
-    if (options.categoryId === null) {
-      request.data.relationships = { category: { data: null } };
-    } else {
-      request.data.relationships = {
-        category: { data: { type: "category", id: options.categoryId } },
-      };
-    }
+    request.category_id = options.categoryId === null ? null : Number(options.categoryId);
   }
 
   const response = await client.request<ChoreResponse>(
@@ -157,12 +139,21 @@ export async function updateChore(
   return response.data;
 }
 
+/** How a delete should apply to a recurring chore series. */
+export type ChoreDeleteScope = "all" | "this" | "this_and_future";
+
 /**
- * Delete a chore
+ * Delete a chore.
+ * Recurring chores require an `apply_to` value; it is harmless for one-off chores,
+ * so it always defaults to deleting the whole series.
  */
-export async function deleteChore(choreId: string): Promise<void> {
+export async function deleteChore(
+  choreId: string,
+  applyTo: ChoreDeleteScope = "all"
+): Promise<void> {
   const client = getClient();
   await client.request(`/api/frames/{frameId}/chores/${choreId}`, {
     method: "DELETE",
+    params: { apply_to: applyTo },
   });
 }
