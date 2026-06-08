@@ -257,10 +257,35 @@ export class SkylightClient {
   }
 
   /**
+   * Detect subscription status from /api/user.
+   * Used for token-based auth, where there is no login response to read it from.
+   */
+  private async detectSubscriptionStatus(): Promise<void> {
+    try {
+      const user = await this.get<{
+        data: { attributes: { subscription_status: string } };
+      }>("/api/user");
+      this.subscriptionStatus =
+        (user?.data?.attributes?.subscription_status as SubscriptionStatus) ?? null;
+      console.error(`Subscription status (token auth): ${this.subscriptionStatus}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`[client] Could not determine subscription status from /api/user: ${message}`);
+    }
+  }
+
+  /**
    * Initialize the client (triggers login if using email/password auth)
    */
   async initialize(): Promise<void> {
     await this.getCredentials();
+
+    // Email/password login already populates subscriptionStatus. For token-based
+    // auth there is no login response, so fetch it from /api/user to ensure
+    // Plus-only tools register correctly.
+    if (!usesEmailAuth(this.config) && this.subscriptionStatus === null) {
+      await this.detectSubscriptionStatus();
+    }
   }
 }
 
