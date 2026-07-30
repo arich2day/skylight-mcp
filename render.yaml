@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: skylight-mcp
+    env: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: SKYLIGHT_EMAIL
+        sync: false
+      - key: SKYLIGHT_PASSWORD
+        sync: false
