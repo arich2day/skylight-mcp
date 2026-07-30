@@ -3,13 +3,13 @@
   "version": "1.0.0",
   "description": "Skylight Frame and Calendar MCP Server",
   "type": "commonjs",
-  "main": "build/index.js",
+  "main": "dist/index.js",
   "bin": {
-    "skylight-mcp": "build/index.js"
+    "skylight-mcp": "dist/index.js"
   },
   "scripts": {
     "build": "tsc",
-    "start": "supergateway --port $PORT --host 0.0.0.0 --stdio \"node build/index.js\""
+    "start": "supergateway --port $PORT --host 0.0.0.0 --stdio \"node dist/index.js\""
   },
   "keywords": [
     "mcp",
