@@ -1,49 +1,60 @@
-# 🌟 Skylight MCP Server
+# 🌟 Skylight MCP Server (v2.0.0)
 
 > A unified Model Context Protocol (MCP) server connecting **Skylight Smart Calendar & Digital Photo Frames** to any AI agent or assistant — including **Antigravity, Claude Desktop, Cursor, Windsurf, Cline / Roo Code, OpenAI Codex / ChatGPT**, and custom agents.
 
 ---
 
 ## 📑 Table of Contents
-1. [What This Server Does](#-what-this-server-does)
-2. [What Changed & Why Token Auth is Required](#-what-changed--why-token-auth-is-required)
-3. [Step-by-Step: How to Get Your Skylight Token](#-step-by-step-how-to-get-your-skylight-token)
-   - [Method 1: 1-Click Bookmarklet (iPhone, iPad, Android & Desktop)](#method-1-1-click-bookmarklet-recommended-for-phones-ipads--desktop)
+1. [What This Server Does](#what-this-server-does)
+2. [What's New in v2.0.0](#whats-new-in-v200)
+3. [Step-by-Step: How to Get Your Skylight Token](#step-by-step-how-to-get-your-skylight-token)
+   - [Method 1: 1-Click Bookmarklet](#method-1-1-click-bookmarklet-recommended-for-phones-ipads--desktop)
    - [Method 2: Chrome Extension](#method-2-chrome-extension-desktop-chrome--edge--brave)
-4. [How to Add This MCP Server to Your AI Tools](#-how-to-add-this-mcp-server-to-your-ai-tools)
+4. [How to Add This MCP Server to Your AI Tools](#how-to-add-this-mcp-server-to-your-ai-tools)
    - [1. Antigravity](#1-antigravity)
    - [2. Claude Desktop](#2-claude-desktop)
    - [3. Cursor](#3-cursor)
    - [4. Windsurf](#4-windsurf)
    - [5. Cline / Roo Code (VS Code)](#5-cline--roo-code-vs-code)
    - [6. Custom CLI / Generic Agents](#6-generic-mcp-clients--cli)
-5. [Cloud Deployment Guide (Host on Render for 24/7 Remote SSE)](#-cloud-deployment-guide-render)
-6. [How to Use & Example Prompts for Your AI Agent](#-how-to-use--example-prompts-for-your-ai-agent)
-7. [Full MCP Tools Reference](#-full-mcp-tools-reference)
-8. [Troubleshooting & FAQ](#-troubleshooting--faq)
-9. [How to Update This Repo on an iPad](#-how-to-update-this-repo-on-an-ipad)
+5. [Cloud Deployment Guide (Host on Render for 24/7 Remote SSE)](#cloud-deployment-guide-render)
+6. [How to Use & Example Prompts for Your AI Agent](#how-to-use--example-prompts-for-your-ai-agent)
+7. [Full MCP Tools Reference (13 Tools)](#full-mcp-tools-reference)
+8. [Troubleshooting & FAQ](#troubleshooting--faq)
+9. [How to Update This Repo on an iPad](#how-to-update-this-repo-on-an-ipad)
 
 ---
 
-## 🎯 What This Server Does
+## What This Server Does
 
-This server allows your AI assistants to manage your household's Skylight devices:
+This server gives your AI assistants full access to manage your household's Skylight devices:
 * 📅 **Calendar Events**: View today's schedule, create events, resolve conflicts, and delete entries.
 * 🏷️ **Categories & Profiles**: Organize events by family member, color code, or linked external calendars.
 * 🧹 **Chores & Checklists**: Track household task assignments and toggle completion states.
+* 🛒 **Lists & Groceries**: View and add items to shared shopping, grocery, and to-do lists.
+* 🍲 **Meal Planning**: Retrieve planned family dinners and recipe links.
+* 🎁 **Rewards**: Track chore points earned and reward redemption options.
+* 👑 **Plus Subscription**: Verify active Skylight Plus features and expiration status.
 * 🖼️ **Frames & Devices**: Inspect active frames, screen settings, and device IDs.
 
 ---
 
-## ⚠️ What Changed & Why Token Auth is Required
+## What's New in v2.0.0
 
-Skylight deprecated and version-gated their legacy direct username/password endpoint (returning `401 Unauthorized: This version of Skylight is no longer supported`). 
-
-This MCP server now uses persistent **OAuth Refresh / Bearer Tokens** (`SKYLIGHT_TOKEN`). This token allows your AI agent to interact with your Skylight account continuously without asking you to log in repeatedly.
+* **Direct Token Authentication**: Replaced legacy email/password authentication (which was version-gated by Skylight with 401 errors) with OAuth token authentication (`SKYLIGHT_TOKEN`).
+* **Expanded API Endpoints**:
+  * Added `check_plus_subscription` for subscription and entitlement checks.
+  * Added `list_lists` and `add_list_item` for grocery and shopping lists.
+  * Added `list_meals` for scheduled family dinners.
+  * Added `list_rewards` for chore point balances.
+* **Universal Token Extraction Helpers**:
+  * **Chrome Extension (`/extension`)**: Adds a 1-click floating button on `app.ourskylight.com` to capture and copy your persistent refresh token.
+  * **1-Click Bookmarklet (`/tools/bookmarklet.js`)**: A zero-install script compatible with all desktop and mobile browsers (including iPad/iPhone Safari and Chrome).
+* **Flexible Hosting**: Works locally via `stdio` or remotely via `SSE` (e.g., Render, Railway) with Supergateway.
 
 ---
 
-## 🔑 Step-by-Step: How to Get Your Skylight Token
+## Step-by-Step: How to Get Your Skylight Token
 
 Choose the method that is most convenient for you or your family members.
 
@@ -94,7 +105,7 @@ javascript:(function(){function searchDeep(obj,depth=0){if(depth>5||!obj)return 
 
 ---
 
-## 🔌 How to Add This MCP Server to Your AI Tools
+## How to Add This MCP Server to Your AI Tools
 
 You can connect your AI agent in two ways:
 * **Remote SSE Connection (Recommended)**: Connects to your hosted cloud server (e.g., on Render) via a URL. No local Node.js required.
@@ -238,7 +249,7 @@ SKYLIGHT_TOKEN="YOUR_COPIED_TOKEN_HERE" SKYLIGHT_AUTH_TYPE="bearer" node dist/in
 
 ---
 
-## ☁️ Cloud Deployment Guide (Render)
+## Cloud Deployment Guide (Render)
 
 Host your MCP server for free/low-cost on [Render](https://render.com) so any tool can access it 24/7 via SSE.
 
@@ -262,7 +273,7 @@ Host your MCP server for free/low-cost on [Render](https://render.com) so any to
 
 ---
 
-## 💬 How to Use & Example Prompts for Your AI Agent
+## How to Use & Example Prompts for Your AI Agent
 
 Once connected, you can manage your Skylight by simply chatting with your AI assistant:
 
@@ -273,33 +284,46 @@ Once connected, you can manage your Skylight by simply chatting with your AI ass
 * *"Reschedule the soccer practice on Tuesday to 5:30 PM."*
 * *"Delete the cancelled meeting on Thursday at 11 AM."*
 
+### 🛒 Lists & Grocery Prompts
+* *"What lists do we have on our Skylight?"*
+* *"Add 'Almond Milk' and 'Paper Towels' to our grocery list."*
+* *"Show me all items currently on our packing list."*
+
 ### 🧹 Chores & Checklists
 * *"What chores are on the board for today?"*
 * *"Which chores are still pending?"*
 * *"Mark the 'Feed the Dog' chore as completed."*
 
-### 🖼️ Frame & Account Management
-* *"What categories and color labels are configured on our Skylight?"*
-* *"List our connected Skylight frames and their device details."*
+### 🍲 Meals & Recipes
+* *"What dinners are planned on our Skylight this week?"*
+
+### 🎁 Rewards & Plus Subscription
+* *"How many chore reward points do the kids have?"*
+* *"Do we have an active Skylight Plus subscription?"*
 
 ---
 
-## 📚 Full MCP Tools Reference
+## Full MCP Tools Reference
 
 | Tool Name | Parameters | Description |
 | :--- | :--- | :--- |
-| `list_events` | `date_min`, `date_max`, `timezone` | Returns events in ISO-8601 format within the requested date window. |
-| `create_event` | `summary`, `start`, `end`, `category_id`, `all_day` | Creates a calendar event with optional category/color tagging. |
-| `update_event` | `event_id`, `summary`, `start`, `end`, `category_id` | Updates details of an existing event. |
-| `delete_event` | `event_id` | Deletes a calendar event. |
-| `list_categories` | *(none)* | Returns all calendar categories, profiles, and colors. |
-| `list_chores` | `after`, `before`, `include_late` | Retrieves assigned chores and task statuses. |
-| `update_chore` | `chore_id`, `status` | Updates chore state (`completed` or `pending`). |
+| `check_plus_subscription` | *(none)* | Checks Plus subscription status, expiration date, and feature access. |
+| `list_events` | `date_min`, `date_max`, `timezone`, `frame_id` | Returns events in ISO-8601 format within the requested date window. |
+| `create_event` | `summary`, `start`, `end`, `category_id`, `all_day`, `frame_id` | Creates a calendar event with optional category/color tagging. |
+| `update_event` | `event_id`, `summary`, `start`, `end`, `category_id`, `frame_id` | Updates details of an existing calendar event. |
+| `delete_event` | `event_id`, `frame_id` | Deletes a calendar event. |
+| `list_categories` | `frame_id` | Returns all calendar categories, profiles, and color tags. |
+| `list_chores` | `after`, `before`, `include_late`, `frame_id` | Retrieves assigned chores and task statuses. |
+| `update_chore` | `chore_id`, `status`, `frame_id` | Updates chore state (`completed` or `pending`). |
+| `list_lists` | `frame_id` | Lists all checklists, grocery lists, and to-do lists. |
+| `add_list_item` | `list_id`, `text`, `frame_id` | Adds a new item to a specific Skylight list. |
+| `list_meals` | `frame_id` | Retrieves scheduled meals and recipes from the meal planner. |
+| `list_rewards` | `frame_id` | Retrieves chore reward points and redemption options. |
 | `list_frames` | *(none)* | Lists household frames, frame IDs, and hardware metadata. |
 
 ---
 
-## ❓ Troubleshooting & FAQ
+## Troubleshooting & FAQ
 
 ### 1. Error: `401 Unauthorized` / "This version of Skylight is no longer supported"
 * **Fix**: You have `SKYLIGHT_EMAIL` and `SKYLIGHT_PASSWORD` set in your environment. Delete both variables completely. Set `SKYLIGHT_TOKEN` and `SKYLIGHT_AUTH_TYPE=bearer`.
@@ -315,7 +339,7 @@ Once connected, you can manage your Skylight by simply chatting with your AI ass
 
 ---
 
-## 📱 How to Update This Repo on an iPad
+## How to Update This Repo on an iPad
 
 You can make updates to your GitHub repository directly from your iPad browser without a computer:
 
@@ -326,6 +350,6 @@ You can make updates to your GitHub repository directly from your iPad browser w
 
 ---
 
-## 📄 License
+## License
 
 MIT License. Open source and free to use.
