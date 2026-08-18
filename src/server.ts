@@ -7,7 +7,6 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { SkylightClient } from './api/client.js';
 
-// Dynamically read version from package.json with fallback
 let serverVersion = '2.0.0';
 try {
   const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf-8'));
@@ -33,13 +32,11 @@ export async function createServer(): Promise<Server> {
   );
 
   const tools: Tool[] = [
-    // 1. Subscription & Account
     {
       name: 'check_plus_subscription',
       description: 'Checks whether the user has an active Skylight Plus subscription, expiration date, and feature access.',
       inputSchema: { type: 'object', properties: {} },
     },
-    // 2. Calendar
     {
       name: 'list_events',
       description: 'Lists calendar events for a specific date range.',
@@ -107,7 +104,6 @@ export async function createServer(): Promise<Server> {
         },
       },
     },
-    // 3. Chores
     {
       name: 'list_chores',
       description: 'Lists chore and task assignments for household members.',
@@ -134,7 +130,6 @@ export async function createServer(): Promise<Server> {
         required: ['chore_id', 'status'],
       },
     },
-    // 4. Lists & Groceries
     {
       name: 'list_lists',
       description: 'Lists all checklists and grocery lists on the frame.',
@@ -158,7 +153,6 @@ export async function createServer(): Promise<Server> {
         required: ['list_id', 'text'],
       },
     },
-    // 5. Meals
     {
       name: 'list_meals',
       description: 'Retrieves planned meals and recipes from the Skylight meal planner.',
@@ -169,7 +163,6 @@ export async function createServer(): Promise<Server> {
         },
       },
     },
-    // 6. Rewards
     {
       name: 'list_rewards',
       description: 'Retrieves chore reward points and redemption options.',
@@ -180,7 +173,6 @@ export async function createServer(): Promise<Server> {
         },
       },
     },
-    // 7. Frames
     {
       name: 'list_frames',
       description: 'Lists all Skylight frames connected to this account.',

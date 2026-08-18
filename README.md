@@ -1,25 +1,29 @@
 # 🌟 Skylight MCP Server (v2.0.0)
 
-> A unified Model Context Protocol (MCP) server connecting **Skylight Smart Calendar & Digital Photo Frames** to any AI agent or assistant — including **Antigravity, Claude Desktop, Cursor, Windsurf, Cline / Roo Code, OpenAI Codex / ChatGPT**, and custom agents.
+> A unified Model Context Protocol (MCP) server connecting **Skylight Smart Calendar & Digital Photo Frames** to any AI agent or assistant — including **Antigravity, Claude Desktop, Claude Code, Cursor, Windsurf, Cline, Roo Code, ChatGPT Desktop / Codex, Goose, Continue.dev**, and custom agents.
 
 ---
 
 ## 📑 Table of Contents
 1. [What This Server Does](#what-this-server-does)
 2. [What's New in v2.0.0](#whats-new-in-v200)
-3. [Step-by-Step: How to Get Your Skylight Token](#step-by-step-how-to-get-your-skylight-token)
-   - [Method 1: 1-Click Bookmarklet](#method-1-1-click-bookmarklet-recommended-for-phones-ipads--desktop)
-   - [Method 2: Chrome Extension](#method-2-chrome-extension-desktop-chrome--edge--brave)
-4. [How to Add This MCP Server to Your AI Tools](#how-to-add-this-mcp-server-to-your-ai-tools)
+3. [Step 1: How to Get Your Skylight Token](#step-1-how-to-get-your-skylight-token)
+   - [Method A: 1-Click Bookmarklet (Phones, iPads & Desktop)](#method-a-1-click-bookmarklet-recommended-for-phones-ipads--desktop)
+   - [Method B: Chrome Extension (Desktop)](#method-b-chrome-extension-desktop-chrome--edge--brave)
+4. [Step 2: How to Add the MCP Server to Your AI Tools](#step-2-how-to-add-the-mcp-server-to-your-ai-tools)
    - [1. Antigravity](#1-antigravity)
-   - [2. Claude Desktop](#2-claude-desktop)
-   - [3. Cursor](#3-cursor)
-   - [4. Windsurf](#4-windsurf)
-   - [5. Cline / Roo Code (VS Code)](#5-cline--roo-code-vs-code)
-   - [6. Custom CLI / Generic Agents](#6-generic-mcp-clients--cli)
+   - [2. Claude Desktop](#2-claude-desktop-macos--windows)
+   - [3. Claude Code (CLI)](#3-claude-code-cli)
+   - [4. Cursor](#4-cursor)
+   - [5. Windsurf](#5-windsurf)
+   - [6. Cline (VS Code Extension)](#6-cline-vs-code-extension)
+   - [7. Roo Code (VS Code Extension)](#7-roo-code-vs-code-extension)
+   - [8. Continue.dev](#8-continuedev)
+   - [9. Goose CLI](#9-goose-cli)
+   - [10. ChatGPT Desktop / OpenAI Codex](#10-chatgpt-desktop--openai-codex)
 5. [Cloud Deployment Guide (Host on Render for 24/7 Remote SSE)](#cloud-deployment-guide-render)
 6. [How to Use & Example Prompts for Your AI Agent](#how-to-use--example-prompts-for-your-ai-agent)
-7. [Full MCP Tools Reference (13 Tools)](#full-mcp-tools-reference)
+7. [Full MCP Tools Reference (13 Tools)](#full-mcp-tools-reference-13-tools)
 8. [Troubleshooting & FAQ](#troubleshooting--faq)
 9. [How to Update This Repo on an iPad](#how-to-update-this-repo-on-an-ipad)
 
@@ -27,7 +31,7 @@
 
 ## What This Server Does
 
-This server gives your AI assistants full access to manage your household's Skylight devices:
+This server gives your AI assistants full control to manage your household's Skylight devices:
 * 📅 **Calendar Events**: View today's schedule, create events, resolve conflicts, and delete entries.
 * 🏷️ **Categories & Profiles**: Organize events by family member, color code, or linked external calendars.
 * 🧹 **Chores & Checklists**: Track household task assignments and toggle completion states.
@@ -41,7 +45,7 @@ This server gives your AI assistants full access to manage your household's Skyl
 
 ## What's New in v2.0.0
 
-* **Direct Token Authentication**: Replaced legacy email/password authentication (which was version-gated by Skylight with 401 errors) with OAuth token authentication (`SKYLIGHT_TOKEN`).
+* **Direct Token Authentication**: Replaced legacy email/password authentication (which is version-gated by Skylight with 401 errors) with OAuth token authentication (`SKYLIGHT_TOKEN`).
 * **Expanded API Endpoints**:
   * Added `check_plus_subscription` for subscription and entitlement checks.
   * Added `list_lists` and `add_list_item` for grocery and shopping lists.
@@ -54,13 +58,13 @@ This server gives your AI assistants full access to manage your household's Skyl
 
 ---
 
-## Step-by-Step: How to Get Your Skylight Token
+## Step 1: How to Get Your Skylight Token
 
 Choose the method that is most convenient for you or your family members.
 
 ---
 
-### Method 1: 1-Click Bookmarklet (Recommended for Phones, iPads & Desktop)
+### Method A: 1-Click Bookmarklet (Recommended for Phones, iPads & Desktop)
 
 *Zero installation required. Works on Safari, Chrome, Edge, and Firefox on iOS, iPadOS, Android, Mac, and Windows.*
 
@@ -87,7 +91,7 @@ javascript:(function(){function searchDeep(obj,depth=0){if(depth>5||!obj)return 
 
 ---
 
-### Method 2: Chrome Extension (Desktop Chrome / Edge / Brave)
+### Method B: Chrome Extension (Desktop Chrome / Edge / Brave)
 
 *Adds a floating button right on the Skylight website that copies your token with one click.*
 
@@ -105,7 +109,7 @@ javascript:(function(){function searchDeep(obj,depth=0){if(depth>5||!obj)return 
 
 ---
 
-## How to Add This MCP Server to Your AI Tools
+## Step 2: How to Add the MCP Server to Your AI Tools
 
 You can connect your AI agent in two ways:
 * **Remote SSE Connection (Recommended)**: Connects to your hosted cloud server (e.g., on Render) via a URL. No local Node.js required.
@@ -133,13 +137,13 @@ You can connect your AI agent in two ways:
 
 ---
 
-### 2. Claude Desktop
+### 2. Claude Desktop (macOS & Windows)
 
 Edit your configuration file:
 * **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
 * **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
 
-#### Option A: Local stdio Configuration
+#### Local stdio Configuration:
 ```json
 {
   "mcpServers": {
@@ -155,7 +159,7 @@ Edit your configuration file:
 }
 ```
 
-#### Option B: Remote SSE Configuration (via mcp-proxy)
+#### Remote SSE Configuration (via mcp-proxy):
 ```json
 {
   "mcpServers": {
@@ -169,7 +173,22 @@ Edit your configuration file:
 
 ---
 
-### 3. Cursor
+### 3. Claude Code (CLI)
+
+Run the following command in your terminal:
+
+```bash
+claude mcp add skylight node /ABSOLUTE/PATH/TO/skylight-mcp/dist/index.js -e SKYLIGHT_TOKEN="YOUR_COPIED_TOKEN_HERE" -e SKYLIGHT_AUTH_TYPE="bearer"
+```
+
+Or for remote SSE:
+```bash
+claude mcp add skylight npx -y mcp-proxy [https://your-service-name.onrender.com/sse](https://your-service-name.onrender.com/sse)
+```
+
+---
+
+### 4. Cursor
 
 1. In Cursor, open **Settings** -> **Features** -> **MCP**.
 2. Click **+ Add New MCP Server**.
@@ -195,7 +214,7 @@ Edit your configuration file:
 
 ---
 
-### 4. Windsurf
+### 5. Windsurf
 
 1. Open Windsurf -> Go to **Settings** -> **Cascade** -> **MCP Servers**.
 2. Or edit `~/.codeium/windsurf/mcp_config.json`:
@@ -216,9 +235,9 @@ Edit your configuration file:
 
 ---
 
-### 5. Cline / Roo Code (VS Code)
+### 6. Cline (VS Code Extension)
 
-1. In VS Code, open the **Cline** or **Roo Code** extension in the sidebar.
+1. In VS Code, open the **Cline** extension in the sidebar.
 2. Click the **MCP Servers** icon (network plug) -> Click **Configure MCP Servers** (opens `cline_mcp_settings.json`).
 3. Add the following entry:
 ```json
@@ -240,11 +259,84 @@ Edit your configuration file:
 
 ---
 
-### 6. Generic MCP Clients / CLI
+### 7. Roo Code (VS Code Extension)
 
-Run directly from terminal:
+1. In VS Code, open the **Roo Code** extension in the sidebar.
+2. Click **Settings** -> **MCP Servers** -> **Edit Configuration** (opens `roo_mcp_settings.json`).
+3. Add the server entry:
+```json
+{
+  "mcpServers": {
+    "skylight": {
+      "command": "node",
+      "args": ["/ABSOLUTE/PATH/TO/skylight-mcp/dist/index.js"],
+      "env": {
+        "SKYLIGHT_TOKEN": "YOUR_COPIED_TOKEN_HERE",
+        "SKYLIGHT_AUTH_TYPE": "bearer"
+      },
+      "disabled": false,
+      "autoApprove": []
+    }
+  }
+}
+```
+
+---
+
+### 8. Continue.dev
+
+In your `~/.continue/config.json`, add to the `mcpServers` list:
+
+```json
+{
+  "mcpServers": [
+    {
+      "name": "skylight",
+      "command": "node",
+      "args": ["/ABSOLUTE/PATH/TO/skylight-mcp/dist/index.js"],
+      "env": {
+        "SKYLIGHT_TOKEN": "YOUR_COPIED_TOKEN_HERE",
+        "SKYLIGHT_AUTH_TYPE": "bearer"
+      }
+    }
+  ]
+}
+```
+
+---
+
+### 9. Goose CLI
+
+Add to Goose using the CLI:
+
 ```bash
-SKYLIGHT_TOKEN="YOUR_COPIED_TOKEN_HERE" SKYLIGHT_AUTH_TYPE="bearer" node dist/index.js
+goose configure add-extension \
+  --name skylight \
+  --cmd node \
+  --args "/ABSOLUTE/PATH/TO/skylight-mcp/dist/index.js" \
+  --env SKYLIGHT_TOKEN="YOUR_COPIED_TOKEN_HERE" \
+  --env SKYLIGHT_AUTH_TYPE="bearer"
+```
+
+---
+
+### 10. ChatGPT Desktop / OpenAI Codex
+
+If using ChatGPT Desktop with MCP support, add the server to your settings file:
+
+```json
+{
+  "mcpServers": {
+    "skylight": {
+      "command": "node",
+      "args": ["/ABSOLUTE/PATH/TO/skylight-mcp/dist/index.js"],
+      "env": {
+        "SKYLIGHT_TOKEN": "YOUR_COPIED_TOKEN_HERE",
+        "SKYLIGHT_AUTH_TYPE": "bearer"
+      }
+    }
+  }
+}
 ```
 
 ---
@@ -303,7 +395,7 @@ Once connected, you can manage your Skylight by simply chatting with your AI ass
 
 ---
 
-## Full MCP Tools Reference
+## Full MCP Tools Reference (13 Tools)
 
 | Tool Name | Parameters | Description |
 | :--- | :--- | :--- |
@@ -336,17 +428,6 @@ Once connected, you can manage your Skylight by simply chatting with your AI ass
 
 ### 4. Do I need to keep the browser open after copying the token?
 * **No.** After copying the token, you can simply close the browser tab.
-
----
-
-## How to Update This Repo on an iPad
-
-You can make updates to your GitHub repository directly from your iPad browser without a computer:
-
-1. Open Safari on your iPad and go to: `https://github.dev/arich2day/skylight-mcp` (or press `.` on GitHub).
-2. Use the file explorer on the left to edit files or create new folders.
-3. Paste the updated code.
-4. Tap the **Source Control** icon (branch icon on the left) -> type a commit message -> tap **Commit & Push** (checkmark icon).
 
 ---
 
