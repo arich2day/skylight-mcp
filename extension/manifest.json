@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "Skylight Token Helper for AI Agents",
+  "version": "1.0.0",
+  "description": "Extracts and copies your Skylight authentication token for AI agents (Claude, Antigravity, Cursor, Codex, etc.).",
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Skylight Token Helper"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://app.ourskylight.com/*", "https://*.ourskylight.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
