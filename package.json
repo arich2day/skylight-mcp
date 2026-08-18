@@ -1,31 +1,35 @@
 {
   "name": "skylight-mcp",
-  "version": "1.0.0",
-  "description": "Skylight Frame and Calendar MCP Server",
-  "type": "commonjs",
+  "version": "2.0.0",
+  "description": "Model Context Protocol (MCP) server for Skylight Calendar & Frame",
   "main": "dist/index.js",
+  "type": "module",
   "bin": {
     "skylight-mcp": "dist/index.js"
   },
   "scripts": {
     "build": "tsc",
-    "start": "supergateway --port $PORT --host 0.0.0.0 --stdio \"node dist/index.js\""
+    "start": "supergateway --port $PORT --host 0.0.0.0 --stdio \"node dist/index.js\"",
+    "dev": "tsc --watch",
+    "local": "node dist/index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "axios": "^1.7.0",
+    "supergateway": "^2.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
   },
   "keywords": [
     "mcp",
+    "model-context-protocol",
     "skylight",
-    "calendar",
-    "frame"
+    "family-calendar",
+    "claude",
+    "antigravity",
+    "smart-home"
   ],
-  "author": "",
-  "license": "MIT",
-  "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.0.0",
-    "supergateway": "^3.4.0",
-    "zod": "^3.22.4"
-  },
-  "devDependencies": {
-    "@types/node": "^20.11.0",
-    "typescript": "^5.3.3"
-  }
+  "license": "MIT"
 }
