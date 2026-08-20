@@ -75,7 +75,13 @@ export class SkylightClient {
     return false;
   }
 
-  private async request<T = any>(config: AxiosRequestConfig): Promise<T> {
+  public async request<T = any>(urlOrConfig: string | AxiosRequestConfig, options?: any): Promise<T> {
+    let config: AxiosRequestConfig;
+    if (typeof urlOrConfig === 'string') {
+      config = { url: urlOrConfig, ...options, data: options?.body };
+    } else {
+      config = urlOrConfig;
+    }
     try {
       const res = await this.api.request<T>(config);
       return res.data;
@@ -97,6 +103,15 @@ export class SkylightClient {
       const msg = error.response?.data?.errors?.join(', ') || error.message;
       throw new Error(`Skylight API Error: ${msg}`);
     }
+  }
+
+
+public async get<T = any>(url: string, params?: any): Promise<T> {
+    return this.request<T>({ method: 'GET', url, params });
+  }
+
+  public async post<T = any>(url: string, data?: any): Promise<T> {
+    return this.request<T>({ method: 'POST', url, data });
   }
 
   // --- 1. Subscription & Profile ---
@@ -243,4 +258,12 @@ export class SkylightClient {
     const fid = frameId || this.defaultFrameId;
     return this.request({ method: 'GET', url: `/api/frames/${fid}/rewards` });
   }
+}
+let globalClient: SkylightClient | null = null;
+
+export function getClient(): SkylightClient {
+  if (!globalClient) {
+    globalClient = new SkylightClient();
+  }
+  return globalClient;
 }
