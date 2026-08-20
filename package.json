@@ -11,7 +11,8 @@
     "build": "tsc",
     "start": "supergateway --port $PORT --host 0.0.0.0 --stdio \"node dist/index.js\"",
     "dev": "tsc --watch",
-    "local": "node dist/index.js"
+    "local": "node dist/index.js",
+    "test": "vitest run"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
@@ -20,7 +21,8 @@
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "vitest": "^4.1.11"
   },
   "keywords": [
     "mcp",
