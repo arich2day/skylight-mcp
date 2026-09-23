@@ -6,7 +6,9 @@ services:
     buildCommand: npm install && npm run build
     startCommand: npm start
     envVars:
-      - key: SKYLIGHT_EMAIL
+      - key: SKYLIGHT_TOKEN
         sync: false
-      - key: SKYLIGHT_PASSWORD
-        sync: false
+      - key: SKYLIGHT_AUTH_TYPE
+        value: bearer
+      - key: SKYLIGHT_TIMEZONE
+        value: America/New_York
