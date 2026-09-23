@@ -9,7 +9,7 @@
   },
   "scripts": {
     "build": "tsc",
-    "start": "supergateway --port $PORT --host 0.0.0.0 --stdio \"node dist/index.js\"",
+    "start": "supergateway --port $PORT --host 0.0.0.0 --cors --healthEndpoint / --stdio \"node dist/index.js\"",
     "dev": "tsc --watch",
     "local": "node dist/index.js",
     "test": "vitest run"
