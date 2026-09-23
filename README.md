@@ -1,6 +1,6 @@
 # 🌟 Skylight MCP Server (v2.0.0)
 
-> A unified Model Context Protocol (MCP) server connecting **Skylight Smart Calendar & Digital Photo Frames** to any AI agent or assistant — including **Antigravity, Claude Desktop, Claude Code, Cursor, Windsurf, Cline, Roo Code, ChatGPT Desktop / Codex, Goose, Continue.dev**, and custom agents.
+> A unified Model Context Protocol (MCP) server connecting **Skylight Smart Calendar & Digital Photo Frames** to any AI agent or assistant — including **Gemini Spark, Google Gemini / Gemini CLI, Antigravity, Claude Desktop, Claude Code, Cursor, Windsurf, Cline, Roo Code, ChatGPT Desktop / Codex, Goose, Continue.dev**, and custom agents.
 
 ---
 
@@ -11,16 +11,18 @@
    - [Method A: 1-Click Bookmarklet (Phones, iPads & Desktop)](#method-a-1-click-bookmarklet-recommended-for-phones-ipads--desktop)
    - [Method B: Chrome Extension (Desktop)](#method-b-chrome-extension-desktop-chrome--edge--brave)
 4. [Step 2: How to Add the MCP Server to Your AI Tools](#step-2-how-to-add-the-mcp-server-to-your-ai-tools)
-   - [1. Antigravity](#1-antigravity)
-   - [2. Claude Desktop](#2-claude-desktop-macos--windows)
-   - [3. Claude Code (CLI)](#3-claude-code-cli)
-   - [4. Cursor](#4-cursor)
-   - [5. Windsurf](#5-windsurf)
-   - [6. Cline (VS Code Extension)](#6-cline-vs-code-extension)
-   - [7. Roo Code (VS Code Extension)](#7-roo-code-vs-code-extension)
-   - [8. Continue.dev](#8-continuedev)
-   - [9. Goose CLI](#9-goose-cli)
-   - [10. ChatGPT Desktop / OpenAI Codex](#10-chatgpt-desktop--openai-codex)
+   - [1. Gemini Spark (Always-On AI Agent)](#1-gemini-spark-always-on-ai-agent)
+   - [2. Google Gemini / Gemini CLI](#2-google-gemini--gemini-cli)
+   - [3. Antigravity](#3-antigravity)
+   - [4. Claude Desktop](#4-claude-desktop-macos--windows)
+   - [5. Claude Code (CLI)](#5-claude-code-cli)
+   - [6. Cursor](#6-cursor)
+   - [7. Windsurf](#7-windsurf)
+   - [8. Cline (VS Code Extension)](#8-cline-vs-code-extension)
+   - [9. Roo Code (VS Code Extension)](#9-roo-code-vs-code-extension)
+   - [10. Continue.dev](#10-continuedev)
+   - [11. Goose CLI](#11-goose-cli)
+   - [12. ChatGPT Desktop / OpenAI Codex](#12-chatgpt-desktop--openai-codex)
 5. [Cloud Deployment Guide (Host on Render for 24/7 Remote SSE)](#cloud-deployment-guide-render)
 6. [How to Use & Example Prompts for Your AI Agent](#how-to-use--example-prompts-for-your-ai-agent)
 7. [Full MCP Tools Reference (13 Tools)](#full-mcp-tools-reference-13-tools)
@@ -117,7 +119,81 @@ You can connect your AI agent in two ways:
 
 ---
 
-### 1. Antigravity
+### 1. Gemini Spark (Always-On AI Agent)
+
+[Gemini Spark](https://gemini.google.com) is Google's proactive, 24/7 autonomous cloud agent. Because Gemini Spark runs persistently in Google Cloud, it can monitor your Skylight calendar, run automated morning briefings, and track chores in the background without needing your local computer on.
+
+Gemini Spark connects directly to your hosted Skylight MCP server over HTTPS via **Connected Apps**.
+
+#### Requirements:
+* Deploy your Skylight MCP server to the cloud (e.g., [Render](#cloud-deployment-guide-render), Railway, or Cloud Run) with your `SKYLIGHT_TOKEN`.
+* Personal Google Account with Gemini Spark access (under a Google AI subscription).
+* Ensure "Keep Activity" is turned on in your Gemini settings.
+
+#### Setup Steps:
+1. Open [gemini.google.com](https://gemini.google.com) in your browser.
+2. In the navigation sidebar or profile menu, go to **Settings & help** (⚙️) -> **Connected Apps**.
+3. Scroll down to the **"Custom apps for Spark"** section and click **"Add a custom app"**.
+4. In the URL prompt, enter your hosted MCP server endpoint:
+   ```text
+   https://your-service-name.onrender.com/sse
+   ```
+5. Name the app (e.g., `Skylight Calendar`) and confirm the tool permissions.
+6. Click **Connect**. Gemini Spark will verify the server and register all 13 tools (events, chores, lists, meals, rewards).
+
+#### Proactive Task Examples:
+* *"Every morning at 7:00 AM, check our Skylight calendar and chores for today, and send me a daily briefing."*
+* *"Proactively monitor for any scheduling conflicts between family members on our Skylight calendar."*
+* *"When dinner recipes are added to Skylight meals, check if all ingredients are on our Skylight grocery list."*
+
+---
+
+### 2. Google Gemini / Gemini CLI
+
+For developers using the official **Gemini CLI** or Gemini developer tools:
+
+#### Local stdio Mode:
+Add the server definition to your global Gemini settings (`~/.gemini/settings.json`) or your project settings (`.gemini/settings.json`):
+
+```json
+{
+  "mcpServers": {
+    "skylight": {
+      "command": "node",
+      "args": ["/ABSOLUTE/PATH/TO/skylight-mcp/dist/index.js"],
+      "env": {
+        "SKYLIGHT_TOKEN": "YOUR_COPIED_TOKEN_HERE",
+        "SKYLIGHT_AUTH_TYPE": "bearer"
+      }
+    }
+  }
+}
+```
+
+#### Remote SSE Mode (via mcp-proxy):
+If connecting to your hosted remote instance:
+
+```json
+{
+  "mcpServers": {
+    "skylight": {
+      "command": "npx",
+      "args": ["-y", "mcp-proxy", "https://your-service-name.onrender.com/sse"]
+    }
+  }
+}
+```
+
+#### Verify Tools in Gemini CLI:
+Start your Gemini CLI session and run:
+```bash
+/mcp
+```
+This lists all active MCP servers and confirms the 13 Skylight tools (`list_events`, `create_event`, `list_chores`, `list_lists`, etc.) are ready.
+
+---
+
+### 3. Antigravity
 
 #### Remote SSE Mode (Recommended):
 1. Open Antigravity -> Go to **Settings** -> **MCP Servers** (or **Integrations**).
@@ -137,7 +213,7 @@ You can connect your AI agent in two ways:
 
 ---
 
-### 2. Claude Desktop (macOS & Windows)
+### 4. Claude Desktop (macOS & Windows)
 
 Edit your configuration file:
 * **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
@@ -165,7 +241,7 @@ Edit your configuration file:
   "mcpServers": {
     "skylight": {
       "command": "npx",
-      "args": ["-y", "mcp-proxy", "[https://your-service-name.onrender.com/sse](https://your-service-name.onrender.com/sse)"]
+      "args": ["-y", "mcp-proxy", "https://your-service-name.onrender.com/sse"]
     }
   }
 }
@@ -173,7 +249,7 @@ Edit your configuration file:
 
 ---
 
-### 3. Claude Code (CLI)
+### 5. Claude Code (CLI)
 
 Run the following command in your terminal:
 
@@ -183,12 +259,12 @@ claude mcp add skylight node /ABSOLUTE/PATH/TO/skylight-mcp/dist/index.js -e SKY
 
 Or for remote SSE:
 ```bash
-claude mcp add skylight npx -y mcp-proxy [https://your-service-name.onrender.com/sse](https://your-service-name.onrender.com/sse)
+claude mcp add skylight npx -y mcp-proxy https://your-service-name.onrender.com/sse
 ```
 
 ---
 
-### 4. Cursor
+### 6. Cursor
 
 1. In Cursor, open **Settings** -> **Features** -> **MCP**.
 2. Click **+ Add New MCP Server**.
@@ -214,7 +290,7 @@ claude mcp add skylight npx -y mcp-proxy [https://your-service-name.onrender.com
 
 ---
 
-### 5. Windsurf
+### 7. Windsurf
 
 1. Open Windsurf -> Go to **Settings** -> **Cascade** -> **MCP Servers**.
 2. Or edit `~/.codeium/windsurf/mcp_config.json`:
@@ -235,7 +311,7 @@ claude mcp add skylight npx -y mcp-proxy [https://your-service-name.onrender.com
 
 ---
 
-### 6. Cline (VS Code Extension)
+### 8. Cline (VS Code Extension)
 
 1. In VS Code, open the **Cline** extension in the sidebar.
 2. Click the **MCP Servers** icon (network plug) -> Click **Configure MCP Servers** (opens `cline_mcp_settings.json`).
@@ -259,7 +335,7 @@ claude mcp add skylight npx -y mcp-proxy [https://your-service-name.onrender.com
 
 ---
 
-### 7. Roo Code (VS Code Extension)
+### 9. Roo Code (VS Code Extension)
 
 1. In VS Code, open the **Roo Code** extension in the sidebar.
 2. Click **Settings** -> **MCP Servers** -> **Edit Configuration** (opens `roo_mcp_settings.json`).
@@ -283,7 +359,7 @@ claude mcp add skylight npx -y mcp-proxy [https://your-service-name.onrender.com
 
 ---
 
-### 8. Continue.dev
+### 10. Continue.dev
 
 In your `~/.continue/config.json`, add to the `mcpServers` list:
 
@@ -305,7 +381,7 @@ In your `~/.continue/config.json`, add to the `mcpServers` list:
 
 ---
 
-### 9. Goose CLI
+### 11. Goose CLI
 
 Add to Goose using the CLI:
 
@@ -320,7 +396,7 @@ goose configure add-extension \
 
 ---
 
-### 10. ChatGPT Desktop / OpenAI Codex
+### 12. ChatGPT Desktop / OpenAI Codex
 
 If using ChatGPT Desktop with MCP support, add the server to your settings file:
 
@@ -360,7 +436,7 @@ Host your MCP server for free/low-cost on [Render](https://render.com) so any to
 6. Click **Deploy Web Service**.
 7. Once deployed, copy your service URL. Your MCP endpoint is:
    ```text
-   [https://your-service-name.onrender.com/sse](https://your-service-name.onrender.com/sse)
+   https://your-service-name.onrender.com/sse
    ```
 
 ---
@@ -368,6 +444,12 @@ Host your MCP server for free/low-cost on [Render](https://render.com) so any to
 ## How to Use & Example Prompts for Your AI Agent
 
 Once connected, you can manage your Skylight by simply chatting with your AI assistant:
+
+### 🤖 Gemini Spark Proactive Automation Prompts
+* *"Every morning at 7:00 AM, check our Skylight calendar and chores for the day and give me a quick morning briefing."*
+* *"Proactively monitor our Skylight calendar and alert me if any events overlap this week."*
+* *"Whenever I ask you to add groceries to my shopping list, add them to our Skylight kitchen list."*
+* *"Check dinner plans for tonight on Skylight meals and remind me to start cooking at 5:00 PM."*
 
 ### 📅 Calendar Prompts
 * *"What's on our family calendar for today and tomorrow?"*
