@@ -19,6 +19,26 @@ async function main() {
 
       const app = express();
 
+      // In-memory log of recent requests for debugging
+      const recentRequests: Array<{
+        timestamp: string;
+        method: string;
+        path: string;
+        headers: Record<string, any>;
+      }> = [];
+
+      app.use((req, _res, next) => {
+        recentRequests.unshift({
+          timestamp: new Date().toISOString(),
+          method: req.method,
+          path: req.originalUrl || req.url,
+          headers: req.headers,
+        });
+        if (recentRequests.length > 50) recentRequests.pop();
+        console.error(`[REQUEST] ${req.method} ${req.originalUrl || req.url}`);
+        next();
+      });
+
       // Enable CORS for all origins, headers, and methods
       app.use(cors({
         origin: '*',
@@ -27,22 +47,38 @@ async function main() {
         exposedHeaders: ['mcp-session-id', 'Content-Type'],
       }));
 
-      // Health checks
+      // Health and debugging endpoints
       app.get('/healthz', (_req, res) => res.status(200).send('ok'));
+      app.get('/debug-requests', (_req, res) => res.status(200).json(recentRequests));
 
-      // Root endpoint: return ok for plain browser/health checks, or handle MCP if Accept header is MCP
-      app.get('/', (req, res, next) => {
-        const accept = req.headers['accept'] || '';
-        if (!accept.includes('text/event-stream') && !accept.includes('application/json')) {
-          res.status(200).send('ok');
-          return;
-        }
-        next();
+      // MCP discovery endpoints (RFC draft & Google/client discovery)
+      app.get(['/.well-known/mcp.json', '/.well-known/mcp'], (_req, res) => {
+        res.status(200).json({
+          name: 'skylight-mcp',
+          version: '2.0.0',
+          description: 'Skylight Calendar & Photo Frame MCP Server',
+          transport: {
+            type: 'streamable-http',
+            url: '/mcp',
+          },
+        });
       });
 
       // Handle MCP requests (Streamable HTTP POST & SSE GET) on /, /mcp, and /sse
       app.all(['/', '/mcp', '/sse'], async (req, res) => {
-        // Ensure rawHeaders has acceptable Accept header for MCP spec
+        // If GET request without explicit text/event-stream accept header, return instant 200 OK JSON
+        if (req.method === 'GET' && !req.headers['accept']?.includes('text/event-stream')) {
+          res.status(200).json({
+            status: 'ok',
+            name: 'skylight-mcp',
+            version: '2.0.0',
+            transport: 'streamable-http',
+            endpoint: req.path,
+          });
+          return;
+        }
+
+        // For POST or SSE GET: ensure Accept header satisfies MCP specification
         const accept = req.headers['accept'] || '';
         if (!accept.includes('application/json') || !accept.includes('text/event-stream')) {
           req.rawHeaders.push('Accept', 'application/json, text/event-stream');
