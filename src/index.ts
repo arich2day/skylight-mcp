@@ -42,7 +42,7 @@ async function main() {
       // Enable CORS for all origins, headers, and methods
       app.use(cors({
         origin: '*',
-        methods: ['GET', 'POST', 'OPTIONS', 'DELETE', 'PUT'],
+        methods: ['GET', 'POST', 'OPTIONS', 'DELETE', 'PUT', 'HEAD'],
         allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'mcp-session-id', '*'],
         exposedHeaders: ['mcp-session-id', 'Content-Type'],
       }));
@@ -64,8 +64,17 @@ async function main() {
         });
       });
 
-      // Handle MCP requests (Streamable HTTP POST & SSE GET) on /, /mcp, and /sse
-      app.all(['/', '/mcp', '/sse'], async (req, res) => {
+      // Handle HEAD requests on any path with 200 OK (for Go-http-client / Google probes)
+      app.use((req, res, next) => {
+        if (req.method === 'HEAD') {
+          res.status(200).end();
+          return;
+        }
+        next();
+      });
+
+      // Handle MCP requests (Streamable HTTP POST & SSE GET) on /, /mcp, /sse, and trailing slash variants
+      app.all(['/', '/mcp', '/mcp/', '/sse', '/sse/'], async (req, res) => {
         // If GET request without explicit text/event-stream accept header, return instant 200 OK JSON
         if (req.method === 'GET' && !req.headers['accept']?.includes('text/event-stream')) {
           res.status(200).json({
@@ -78,12 +87,27 @@ async function main() {
           return;
         }
 
-        // For POST or SSE GET: ensure Accept header satisfies MCP specification
+        // For POST or SSE GET: ensure Accept and Content-Type headers satisfy MCP specification
         const accept = req.headers['accept'] || '';
         if (!accept.includes('application/json') || !accept.includes('text/event-stream')) {
+          req.headers['accept'] = 'application/json, text/event-stream';
           req.rawHeaders.push('Accept', 'application/json, text/event-stream');
         }
+        if (req.method === 'POST' && (!req.headers['content-type'] || !req.headers['content-type'].includes('application/json'))) {
+          req.headers['content-type'] = 'application/json';
+          req.rawHeaders.push('Content-Type', 'application/json');
+        }
         await transport.handleRequest(req, res);
+      });
+
+      // Catch-all fallback for any other requests to return 200 OK
+      app.use((req, res) => {
+        res.status(200).json({
+          status: 'ok',
+          name: 'skylight-mcp',
+          version: '2.0.0',
+          endpoint: req.path,
+        });
       });
 
       const serverPort = parseInt(port, 10) || 8000;
