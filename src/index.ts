@@ -13,6 +13,7 @@ async function main() {
       const server = await createServer();
       const transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: undefined, // Stateless mode for maximum compatibility
+        enableJsonResponse: true, // Return direct application/json responses for HTTP clients like Gemini
       });
       await server.connect(transport);
 
